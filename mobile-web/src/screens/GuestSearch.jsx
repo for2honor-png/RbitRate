@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { api } from '../api';
 import { C } from '../theme';
 
@@ -113,6 +113,36 @@ function AgenciesTab() {
   );
 }
 
+function GuestDetailFields({ g }) {
+  return (
+    <>
+      {[
+        ['Date de naissance',  g.date_of_birth],
+        ['Lieu de naissance',  g.place_of_birth],
+        ['Profession',         g.profession],
+        ['Adresse',            g.permanent_address],
+        ['Téléphone',          g.phone],
+        ['Email',              g.email],
+        ['Type document',      g.document_type],
+        ['Numéro document',    g.document_number],
+        ['Délivré à',          g.document_issued_at],
+        ['Date délivrance',    g.document_issued_date],
+        ['Séjours',            g.total_stays ? `${g.total_stays} séjour(s)` : '0'],
+      ].filter(([, v]) => v).map(([l, v]) => (
+        <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${C.border}` }}>
+          <span style={{ color: C.gray, fontSize: 12 }}>{l}</span>
+          <span style={{ color: C.dark, fontSize: 12, fontWeight: 600, textAlign: 'right', maxWidth: '55%' }}>{v}</span>
+        </div>
+      ))}
+      {g.notes && (
+        <div style={{ marginTop: 8, padding: '8px 10px', background: '#fef9ee', borderRadius: 8, fontSize: 12, color: C.dark }}>
+          📝 {g.notes}
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function GuestSearch() {
   const [tab,      setTab]      = useState('guests');
   const [query,    setQuery]    = useState('');
@@ -173,7 +203,8 @@ export default function GuestSearch() {
             <div style={{ textAlign: 'center', color: C.gray, padding: '20px 0' }}>Aucun résultat</div>
           )}
 
-          <div>
+          {/* Card list — mobile (<768px) */}
+          <div className="clients-cards">
             {results.map(g => {
               const isExp = expanded === g.id;
               const isBlack = g.tag === 'blacklisted';
@@ -215,35 +246,59 @@ export default function GuestSearch() {
                   {isExp && (
                     <div style={{ padding: '0 16px 16px', borderTop: `1px solid ${C.border}` }}>
                       <div style={{ paddingTop: 12 }}>
-                        {[
-                          ['Date de naissance',  g.date_of_birth],
-                          ['Lieu de naissance',  g.place_of_birth],
-                          ['Profession',         g.profession],
-                          ['Adresse',            g.permanent_address],
-                          ['Téléphone',          g.phone],
-                          ['Email',              g.email],
-                          ['Type document',      g.document_type],
-                          ['Numéro document',    g.document_number],
-                          ['Délivré à',          g.document_issued_at],
-                          ['Date délivrance',    g.document_issued_date],
-                          ['Séjours',            g.total_stays ? `${g.total_stays} séjour(s)` : '0'],
-                        ].filter(([, v]) => v).map(([l, v]) => (
-                          <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${C.border}` }}>
-                            <span style={{ color: C.gray, fontSize: 12 }}>{l}</span>
-                            <span style={{ color: C.dark, fontSize: 12, fontWeight: 600, textAlign: 'right', maxWidth: '55%' }}>{v}</span>
-                          </div>
-                        ))}
-                        {g.notes && (
-                          <div style={{ marginTop: 8, padding: '8px 10px', background: '#fef9ee', borderRadius: 8, fontSize: 12, color: C.dark }}>
-                            📝 {g.notes}
-                          </div>
-                        )}
+                        <GuestDetailFields g={g} />
                       </div>
                     </div>
                   )}
                 </div>
               );
             })}
+          </div>
+
+          {/* Table view — desktop (>=768px) */}
+          <div className="clients-table" style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', background: C.white, borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+              <thead>
+                <tr style={{ background: '#f7f5f0', textAlign: 'left' }}>
+                  {['Nom', 'Nationalité', 'Document', 'Tag', 'Séjours', ''].map(h => (
+                    <th key={h} style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: .4 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {results.map(g => {
+                  const isExp = expanded === g.id;
+                  return (
+                    <Fragment key={g.id}>
+                      <tr style={{ borderTop: `1px solid ${C.border}` }}>
+                        <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 700, color: C.dark }}>{g.last_name} {g.first_name}</td>
+                        <td style={{ padding: '10px 14px', fontSize: 13, color: C.dark }}>{g.nationality || '—'}</td>
+                        <td style={{ padding: '10px 14px', fontSize: 13, color: C.dark }}>{g.document_number || '—'}</td>
+                        <td style={{ padding: '10px 14px' }}>
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+                            background: `${TAG_COLOR[g.tag] || C.teal}20`, color: TAG_COLOR[g.tag] || C.teal,
+                          }}>{TAG_LABEL[g.tag] || g.tag}</span>
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: 13, color: C.dark }}>{g.total_stays || 0}</td>
+                        <td style={{ padding: '10px 14px' }}>
+                          <button onClick={() => setExpanded(isExp ? null : g.id)} style={{
+                            background: 'none', color: C.teal, fontWeight: 700, fontSize: 12, minHeight: 0, padding: 0,
+                          }}>{isExp ? 'Masquer' : 'Détails'}</button>
+                        </td>
+                      </tr>
+                      {isExp && (
+                        <tr>
+                          <td colSpan={6} style={{ padding: '4px 14px 16px', background: '#faf9f6', borderTop: `1px solid ${C.border}` }}>
+                            <div style={{ maxWidth: 480 }}><GuestDetailFields g={g} /></div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </>
       )}

@@ -111,7 +111,7 @@ export default function Shifts({ ctx }) {
         </div>
       ) : (
         /* ── State B: Shift open ── */
-        <>
+        <div className="shift-layout">
           {/* Shift header card */}
           <div style={{ background: C.dark, borderRadius: 18, padding: 20, marginBottom: 16, color: C.cream }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#4ade80', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
@@ -190,7 +190,7 @@ export default function Shifts({ ctx }) {
               ))}
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* ── Close Shift Modal ── */}

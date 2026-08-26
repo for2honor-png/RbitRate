@@ -873,6 +873,8 @@ export default function CheckIn({ ctx, params }) {
         )}
       </div>
 
+      <div className="checkin-columns">
+      <div>
       <Section title="Identité du client">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <Field label="Nom *"><input value={form.last_name} onChange={e => setF('last_name', e.target.value)} style={iStyle} /></Field>
@@ -906,7 +908,9 @@ export default function CheckIn({ ctx, params }) {
           <Field label="Date délivrance"><input type="date" value={form.document_issued_date} onChange={e => setF('document_issued_date', e.target.value)} style={iStyle} /></Field>
         </div>
       </Section>
+      </div>
 
+      <div>
       <Section title="Informations de voyage">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <Field label="Venant de"><input value={form.coming_from} onChange={e => setF('coming_from', e.target.value)} style={iStyle} /></Field>
@@ -974,6 +978,8 @@ export default function CheckIn({ ctx, params }) {
           <Field label="Notes"><textarea value={form.notes} onChange={e => setF('notes', e.target.value)} rows={2} style={{ ...iStyle, minHeight: 0, resize: 'none' }} /></Field>
         </Section>
       )}
+      </div>
+      </div>
 
       <button onClick={submit} disabled={busy} style={{
         width: '100%', padding: 18, background: busy ? C.gray : C.teal,

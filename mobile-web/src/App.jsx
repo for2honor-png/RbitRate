@@ -7,6 +7,9 @@ import GuestSearch from './screens/GuestSearch';
 import Shifts      from './screens/Shifts';
 import Fiche       from './screens/Fiche';
 import Canaux      from './screens/Canaux';
+import ComingSoon  from './screens/ComingSoon';
+import Sidebar     from './components/Sidebar';
+import TopBar      from './components/TopBar';
 import { C } from './theme';
 import { can as canCheck } from './auth';
 
@@ -22,8 +25,17 @@ const SCREENS = {
   login: Login, dashboard: Dashboard, rooms: RoomBoard,
   checkin: CheckIn, guests: GuestSearch, shifts: Shifts, fiche: Fiche,
   canaux: Canaux,
+  // Screens that exist on the Electron desktop app but not yet on
+  // mobile-web — kept navigable from the desktop sidebar as placeholders.
+  finances:   () => <ComingSoon label="Finances" />,
+  planning:   () => <ComingSoon label="Planning" />,
+  factures:   () => <ComingSoon label="Factures" />,
+  restaurant: () => <ComingSoon label="Restaurant" />,
+  equipe:     () => <ComingSoon label="Équipe" />,
+  proprietes: () => <ComingSoon label="Propriétés" />,
 };
 
+// Bottom nav (mobile, <768px) — unchanged from before.
 const ALL_NAV = [
   { path: 'dashboard', icon: '🏠', label: 'Accueil' },
   { path: 'rooms',     icon: '🛏', label: 'Chambres' },
@@ -32,10 +44,37 @@ const ALL_NAV = [
   { path: 'canaux',   icon: '🔗', label: 'OTA',      perm: 'can_manage_settings' },
 ];
 
+// Sidebar nav (desktop, >=768px) — mirrors the full Electron desktop nav.
+const SIDEBAR_NAV = [
+  { path: 'dashboard',  icon: '🏠', label: 'Dashboard' },
+  { path: 'rooms',      icon: '🛏️', label: 'Chambres' },
+  { path: 'checkin',    icon: '✅', label: 'Check-in' },
+  { path: 'guests',     icon: '👥', label: 'Clients',      perm: 'can_manage_clients' },
+  { path: 'finances',   icon: '💰', label: 'Finances',     perm: 'can_view_all_finances' },
+  { path: 'shifts',     icon: '⏱️', label: 'Shifts' },
+  { path: 'planning',   icon: '🗓️', label: 'Planning' },
+  { path: 'canaux',     icon: '📡', label: 'Canaux OTA',   perm: 'can_manage_settings' },
+  { path: 'factures',   icon: '🧾', label: 'Factures',     perm: 'can_view_invoices' },
+  { path: 'restaurant', icon: '🍽️', label: 'Restaurant' },
+  { path: 'equipe',     icon: '👤', label: 'Équipe',       perm: 'can_manage_staff' },
+  { path: 'proprietes', icon: '⚙️', label: 'Propriétés',   perm: 'can_manage_properties' },
+];
+
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= 768);
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return isDesktop;
+}
+
 export default function App() {
   const [route, setRoute]       = useState(getRoute());
   const [staff, setStaff]       = useState(() => JSON.parse(localStorage.getItem('rbitrate_staff') || 'null'));
   const [property, setProperty] = useState(() => JSON.parse(localStorage.getItem('rbitrate_property') || 'null'));
+  const isDesktop = useIsDesktop();
 
   useEffect(() => {
     const handle = () => setRoute(getRoute());
@@ -64,14 +103,39 @@ export default function App() {
   const Screen = SCREENS[route.path] || Dashboard;
   const showNav = route.path !== 'login' && route.path !== 'fiche' && !!staff;
 
-  const visibleNav = ALL_NAV.filter(n => !n.perm || can(n.perm));
+  const visibleBottomNav  = ALL_NAV.filter(n => !n.perm || can(n.perm));
+  const visibleSidebarNav = SIDEBAR_NAV.filter(n => !n.perm || can(n.perm));
 
+  // ── Desktop (>=768px, logged in): left sidebar + top bar, no bottom nav ──
+  if (isDesktop && showNav) {
+    const currentTitle = visibleSidebarNav.find(n => n.path === route.path)?.label || 'Tableau de bord';
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh', background: C.cream }}>
+        <Sidebar
+          current={route.path}
+          navigate={navigate}
+          nav={visibleSidebarNav}
+          staff={staff}
+          property={property}
+          logout={logout}
+        />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <TopBar title={currentTitle} property={property} staff={staff} />
+          <main style={{ flex: 1, overflow: 'auto', padding: '24px 32px' }}>
+            <Screen ctx={ctx} params={route.params} />
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Mobile (<768px), and login/fiche at any width: unchanged layout ──
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', maxWidth: 430, margin: '0 auto' }}>
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: showNav ? 64 : 0 }}>
         <Screen ctx={ctx} params={route.params} />
       </div>
-      {showNav && <BottomNav current={route.path} navigate={navigate} nav={visibleNav} />}
+      {showNav && <BottomNav current={route.path} navigate={navigate} nav={visibleBottomNav} />}
     </div>
   );
 }
