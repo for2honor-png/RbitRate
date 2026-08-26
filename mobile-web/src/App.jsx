@@ -1,145 +1,150 @@
-import { useState, useEffect } from 'react';
-import Login       from './screens/Login';
-import Dashboard   from './screens/Dashboard';
-import RoomBoard   from './screens/RoomBoard';
-import CheckIn     from './screens/CheckIn';
-import GuestSearch from './screens/GuestSearch';
-import Shifts      from './screens/Shifts';
-import Fiche       from './screens/Fiche';
-import Canaux      from './screens/Canaux';
-import Sidebar     from './components/Sidebar';
-import TopBar      from './components/TopBar';
-import { useBreakpoint } from './hooks/useBreakpoint';
-import { C } from './theme';
-import { can as canCheck } from './auth';
+import React, { useState, createContext, useContext, useCallback } from 'react';
+import { theme } from './theme.js';
+import Login      from './screens/Login.jsx';
+import Dashboard  from './screens/Dashboard.jsx';
+import Properties from './screens/Properties.jsx';
+import Rooms      from './screens/Rooms.jsx';
+import Guests     from './screens/Guests.jsx';
+import CheckIn    from './screens/CheckIn.jsx';
+import Shifts     from './screens/Shifts.jsx';
+import Finance    from './screens/Finance.jsx';
+import Channels   from './screens/Channels.jsx';
+import Restaurant from './screens/Restaurant.jsx';
+import Invoices   from './screens/Invoices.jsx';
+import Equipe     from './screens/Equipe.jsx';
+import Planning   from './screens/Planning.jsx';
+import Sidebar    from './components/Sidebar.jsx';
+import TopBar     from './components/TopBar.jsx';
 
-function getRoute() {
-  const hash = window.location.hash.slice(1) || 'login';
-  const qi   = hash.indexOf('?');
-  const path = qi >= 0 ? hash.slice(0, qi) : hash;
-  const params = new URLSearchParams(qi >= 0 ? hash.slice(qi + 1) : '');
-  return { path, params };
-}
+export const AuthContext = createContext(null);
+export const AppContext  = createContext(null);
 
-const SCREENS = {
-  login: Login, dashboard: Dashboard, rooms: RoomBoard,
-  checkin: CheckIn, guests: GuestSearch, shifts: Shifts, fiche: Fiche,
-  canaux: Canaux,
+export function useAuth() { return useContext(AuthContext); }
+export function useApp()  { return useContext(AppContext); }
+
+const ROLE_DEFAULTS = {
+  owner: {
+    can_edit_rooms: true, can_view_all_finances: true, can_manage_all_shifts: true,
+    can_manage_clients: true, can_view_invoices: true, can_manage_ota: true,
+    can_manage_restaurant_menu: true, can_view_kitchen: true,
+    can_manage_properties: true, can_manage_staff: true,
+  },
+  manager: {
+    can_edit_rooms: true, can_view_all_finances: true, can_manage_all_shifts: true,
+    can_manage_clients: true, can_view_invoices: true, can_manage_ota: true,
+    can_manage_restaurant_menu: true, can_view_kitchen: true,
+    can_manage_properties: false, can_manage_staff: false,
+  },
+  receptionist: {
+    can_edit_rooms: false, can_view_all_finances: false, can_manage_all_shifts: false,
+    can_manage_clients: false, can_view_invoices: false, can_manage_ota: false,
+    can_manage_restaurant_menu: false, can_view_kitchen: true,
+    can_manage_properties: false, can_manage_staff: false,
+  },
 };
 
-const ALL_NAV = [
-  { path: 'dashboard', icon: '🏠', label: 'Accueil' },
-  { path: 'rooms',     icon: '🛏', label: 'Chambres' },
-  { path: 'checkin',   icon: '✚',  label: 'Check-in' },
-  { path: 'guests',    icon: '👥', label: 'Clients',  perm: 'can_manage_clients' },
-  { path: 'canaux',    icon: '🔗', label: 'OTA',      perm: 'can_manage_settings' },
+function resolvePermissions(staffRecord) {
+  if (staffRecord.role === 'owner') return { ...ROLE_DEFAULTS.owner };
+  const defaults = ROLE_DEFAULTS[staffRecord.role] || ROLE_DEFAULTS.receptionist;
+  let custom = {};
+  try { custom = JSON.parse(staffRecord.permissions || '{}'); } catch (_) {}
+  return { ...defaults, ...custom };
+}
+
+export const NAV_ITEMS = [
+  { key: 'dashboard',  label: 'Tableau de bord', icon: '⊞' },
+  { key: 'rooms',      label: 'Chambres',         icon: '🛏' },
+  { key: 'checkin',    label: 'Check-in',          icon: '→' },
+  { key: 'guests',     label: 'Clients',           icon: '👤', perm: 'can_manage_clients' },
+  { key: 'finances',   label: 'Finances',          icon: '💰', perm: 'can_view_all_finances' },
+  { key: 'shifts',     label: 'Shifts',            icon: '🕐' },
+  { key: 'channels',   label: 'Canaux OTA',         icon: '📡', perm: 'can_manage_ota' },
+  { key: 'invoices',   label: 'Factures',          icon: '📄', perm: 'can_view_invoices' },
+  { key: 'restaurant', label: 'Restaurant',        icon: '🍽',  perm: 'can_manage_restaurant_menu' },
+  { key: 'equipe',     label: 'Équipe',            icon: '👥', perm: 'can_manage_staff' },
+  { key: 'planning',   label: 'Planning',          icon: '🗓️', perm: 'can_manage_staff' },
+  { key: 'properties', label: 'Propriétés',        icon: '🏨', perm: 'can_manage_properties' },
 ];
 
 export default function App() {
-  const [route, setRoute]       = useState(getRoute());
-  const [staff, setStaff]       = useState(() => JSON.parse(localStorage.getItem('rbitrate_staff') || 'null'));
-  const [property, setProperty] = useState(() => JSON.parse(localStorage.getItem('rbitrate_property') || 'null'));
-  const { isDesktop }           = useBreakpoint();
+  const [staff, setStaff]             = useState(null);
+  const [permissions, setPermissions] = useState({});
+  const [page, setPage]               = useState('dashboard');
+  const [selectedPropertyId, setSelectedPropertyId] = useState(null);
+  const [propertyVersion, setPropertyVersion]       = useState(0);
+  const [checkInRoomId, setCheckInRoomId]           = useState(null);
 
-  useEffect(() => {
-    const handle = () => setRoute(getRoute());
-    window.addEventListener('hashchange', handle);
-    return () => window.removeEventListener('hashchange', handle);
+  function refreshProperties() { setPropertyVersion(v => v + 1); }
+
+  function navigateToCheckIn(roomId = null) {
+    setCheckInRoomId(roomId);
+    setPage('checkin');
+  }
+
+  const login = useCallback((staffRecord) => {
+    const perms = resolvePermissions(staffRecord);
+    setPermissions(perms);
+    setStaff(staffRecord);
   }, []);
 
-  useEffect(() => {
-    if (!staff && route.path !== 'login') navigate('login');
-  }, [staff, route.path]);
-
-  const navigate = (path) => { window.location.hash = path; };
-
-  const logout = () => {
-    localStorage.removeItem('rbitrate_staff');
-    localStorage.removeItem('rbitrate_property');
-    localStorage.removeItem('rbitrate_permissions');
+  const logout = useCallback(() => {
     setStaff(null);
-    setProperty(null);
-    navigate('login');
+    setPermissions({});
+    setPage('dashboard');
+  }, []);
+
+  const can = useCallback((permission) => {
+    if (!staff) return false;
+    if (staff.role === 'owner') return true;
+    return !!permissions[permission];
+  }, [staff, permissions]);
+
+  if (!staff) {
+    return (
+      <AuthContext.Provider value={{ staff, login, logout, can }}>
+        <Login />
+      </AuthContext.Provider>
+    );
+  }
+
+  const screenMap = {
+    dashboard:  <Dashboard />,
+    properties: <Properties />,
+    rooms:      <Rooms />,
+    guests:     <Guests />,
+    checkin:    <CheckIn />,
+    shifts:     <Shifts />,
+    finances:   <Finance />,
+    channels:   <Channels />,
+    restaurant: <Restaurant />,
+    invoices:   <Invoices />,
+    equipe:     <Equipe />,
+    planning:   <Planning />,
   };
 
-  const can = (permission) => canCheck(permission);
-
-  const ctx = { staff, setStaff, property, setProperty, navigate, logout, can, isDesktop };
-  const Screen = SCREENS[route.path] || Dashboard;
-  const showNav = route.path !== 'login' && route.path !== 'fiche' && !!staff;
-  const visibleNav = ALL_NAV.filter(n => !n.perm || can(n.perm));
-
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#faf7f2' }}>
-
-      {/* Sidebar — desktop only, not on login/fiche */}
-      {isDesktop && showNav && (
-        <Sidebar
-          currentScreen={route.path}
-          onNavigate={navigate}
-          staff={staff}
-          property={property}
-          onLogout={logout}
-        />
-      )}
-
-      {/* Main content area */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
-        overflow: 'hidden',
-        // Mobile: constrain width like a phone app
-        ...(isDesktop ? {} : { maxWidth: 430, margin: '0 auto', width: '100%' }),
+    <AuthContext.Provider value={{ staff, login, logout, can }}>
+      <AppContext.Provider value={{
+        page, setPage,
+        selectedPropertyId, setSelectedPropertyId,
+        propertyVersion, refreshProperties,
+        checkInRoomId, setCheckInRoomId,
+        navigateToCheckIn,
       }}>
-
-        {/* TopBar — desktop only */}
-        {isDesktop && showNav && (
-          <TopBar currentScreen={route.path} staff={staff} />
-        )}
-
-        {/* Screen content */}
-        <main style={{
-          flex: 1,
-          overflowY: 'auto',
-          paddingBottom: (!isDesktop && showNav) ? 64 : 0,
-          ...(isDesktop ? { padding: '28px 36px' } : {}),
-        }}>
-          <Screen ctx={ctx} params={route.params} />
-        </main>
-
-        {/* Bottom nav — mobile only */}
-        {!isDesktop && showNav && (
-          <BottomNav current={route.path} navigate={navigate} nav={visibleNav} />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function BottomNav({ current, navigate, nav }) {
-  return (
-    <nav style={{
-      position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-      width: '100%', maxWidth: 430,
-      background: C.dark, display: 'flex',
-      paddingBottom: 'env(safe-area-inset-bottom, 8px)',
-      zIndex: 100, boxShadow: '0 -1px 0 rgba(255,255,255,.08)',
-    }}>
-      {nav.map(n => (
-        <button key={n.path} onClick={() => navigate(n.path)} style={{
-          flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-          justifyContent: 'center', padding: '8px 0', background: 'none',
-          color: current === n.path ? C.teal : '#ffffff55',
-          fontSize: 10, fontWeight: 600, gap: 2, minHeight: 56,
-          borderTop: current === n.path ? `2px solid ${C.teal}` : '2px solid transparent',
-          transition: 'color .15s',
-        }}>
-          <span style={{ fontSize: 20 }}>{n.icon}</span>
-          {n.label}
-        </button>
-      ))}
-    </nav>
+        <div style={{ display: 'flex', height: '100vh', fontFamily: theme.font, background: theme.cream, overflow: 'hidden' }}>
+          <Sidebar />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <TopBar navItems={NAV_ITEMS} />
+            <main style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+              {screenMap[page] || (
+                <div style={{ color: theme.dark, opacity: 0.4, marginTop: 60, textAlign: 'center', fontSize: 18 }}>
+                  Cette section sera disponible dans une prochaine phase.
+                </div>
+              )}
+            </main>
+          </div>
+        </div>
+      </AppContext.Provider>
+    </AuthContext.Provider>
   );
 }

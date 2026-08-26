@@ -1,169 +1,166 @@
-import { useState, useEffect } from 'react';
-import { api } from '../api';
-import { C } from '../theme';
-import { getResolvedPermissions } from '../auth';
+import React, { useState, useEffect, useRef } from 'react';
+import { theme } from '../theme.js';
+import { useAuth } from '../App.jsx';
+import { invoke } from '../db.js';
 
-const ROLE_COLOR = { admin: C.coral, manager: C.saffron, receptionist: C.teal };
-
-export default function Login({ ctx }) {
-  const [staff,    setStaff]    = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [pin,      setPin]      = useState('');
-  const [error,    setError]    = useState('');
-  const [shake,    setShake]    = useState(false);
-  const [props,    setProps]    = useState([]);
-  const [pickProp, setPickProp] = useState(false);
-  const [loading,  setLoading]  = useState(true);
+export default function Login() {
+  const { login } = useAuth();
+  const [staffList, setStaffList] = useState([]);
+  const [selectedId, setSelectedId] = useState('');
+  const [pin, setPin] = useState(['', '', '', '']);
+  const [error, setError] = useState('');
+  const [shake, setShake] = useState(false);
+  const pinRefs = [useRef(), useRef(), useRef(), useRef()];
 
   useEffect(() => {
-    api.getStaff()
-      .then(s => setStaff(Array.isArray(s) ? s : []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    invoke('staff:getAll', {}).then(list => {
+      if (!Array.isArray(list)) return;
+      setStaffList(list);
+      if (list.length > 0) setSelectedId(list[0].id);
+    });
   }, []);
 
-  const selectMember = (s) => { setSelected(s); setPin(''); setError(''); };
-
-  const addDigit = (d) => {
-    if (pin.length >= 4) return;
-    const next = pin + d;
+  function handlePinChange(index, value) {
+    const digit = value.replace(/\D/g, '').slice(-1);
+    const next = [...pin];
+    next[index] = digit;
     setPin(next);
-    if (next.length === 4) {
-      if (next === selected.pin_code) {
-        onSuccess();
-      } else {
-        setShake(true);
-        setError('PIN incorrect');
-        setTimeout(() => { setShake(false); setPin(''); setError(''); }, 800);
-      }
+    setError('');
+    if (digit && index < 3) {
+      pinRefs[index + 1].current?.focus();
     }
-  };
+    if (next.every(d => d !== '')) {
+      submitPin(next.join(''));
+    }
+  }
 
-  const onSuccess = async () => {
-    const properties = await api.getProperties().catch(() => []);
-    if (properties.length === 1) {
-      commit(properties[0]);
+  function handlePinKeyDown(index, e) {
+    if (e.key === 'Backspace' && !pin[index] && index > 0) {
+      pinRefs[index - 1].current?.focus();
+    }
+  }
+
+  async function submitPin(code) {
+    const member = staffList.find(s => s.id === selectedId);
+    if (member && (member.pin_code === code || member.pin === code)) {
+      login(member);
     } else {
-      setProps(properties);
-      setPickProp(true);
+      setError('PIN incorrect. Veuillez réessayer.');
+      setShake(true);
+      setPin(['', '', '', '']);
+      setTimeout(() => { setShake(false); pinRefs[0].current?.focus(); }, 600);
     }
-  };
+  }
 
-  const commit = (prop) => {
-    const perms = getResolvedPermissions(selected);
-    localStorage.setItem('rbitrate_staff', JSON.stringify(selected));
-    localStorage.setItem('rbitrate_property', JSON.stringify(prop));
-    localStorage.setItem('rbitrate_permissions', JSON.stringify(perms));
-    ctx.setStaff(selected);
-    ctx.setProperty(prop);
-    ctx.navigate('dashboard');
-  };
-
-  if (pickProp) return (
-    <div style={{ padding: 24, paddingTop: 48 }}>
-      <div style={{ fontSize: 18, fontWeight: 800, color: C.dark, marginBottom: 20 }}>Choisir un établissement</div>
-      {props.map(p => (
-        <button key={p.id} onClick={() => commit(p)} style={{
-          width: '100%', padding: 16, marginBottom: 12, background: C.white,
-          border: `1px solid ${C.border}`, borderRadius: 12,
-          textAlign: 'left', fontSize: 15, fontWeight: 600, color: C.dark,
-        }}>{p.display_name}</button>
-      ))}
-    </div>
-  );
+  const shakeStyle = shake ? {
+    animation: 'shake 0.5s ease',
+  } : {};
 
   return (
     <div style={{
-      minHeight: '100vh', background: C.dark,
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: '48px 24px 32px',
+      height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: theme.cream, fontFamily: theme.font,
     }}>
-      {/* Logo */}
-      <div style={{ textAlign: 'center', marginBottom: 36 }}>
-        <div style={{ fontSize: 48, marginBottom: 10 }}>🏨</div>
-        <div style={{ color: C.cream, fontSize: 26, fontWeight: 900, letterSpacing: -.5 }}>RbitRate</div>
-        <div style={{ color: '#94a3b8', fontSize: 13, marginTop: 4 }}>Système de gestion hôtelière</div>
-      </div>
+      <style>{`
+        @keyframes shake {
+          0%,100% { transform: translateX(0); }
+          20%      { transform: translateX(-8px); }
+          40%      { transform: translateX(8px); }
+          60%      { transform: translateX(-6px); }
+          80%      { transform: translateX(6px); }
+        }
+      `}</style>
 
-      {loading && <div style={{ color: '#94a3b8', fontSize: 14 }}>Chargement des profils...</div>}
-
-      {!selected && !loading && (
-        <div style={{ width: '100%' }}>
-          <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14 }}>
-            Sélectionner un profil
+      <div style={{
+        background: theme.white, borderRadius: 20, padding: '40px 48px',
+        width: 400, boxShadow: '0 8px 48px rgba(31,42,46,0.12)',
+        ...shakeStyle,
+      }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ fontSize: 32, fontWeight: 900, color: theme.dark, letterSpacing: -1 }}>
+            <span style={{ color: theme.teal }}>R</span>bitRate
           </div>
-          {staff.map(s => {
-            const initials = s.full_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-            const color = ROLE_COLOR[s.role] || C.gray;
-            return (
-              <button key={s.id} onClick={() => selectMember(s)} style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: 14,
-                padding: '14px 16px', marginBottom: 10,
-                background: '#2a3840', borderRadius: 12,
-              }}>
-                <div style={{
-                  width: 46, height: 46, borderRadius: 23, background: color,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 16, fontWeight: 800, color: C.white, flexShrink: 0,
-                }}>{initials}</div>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ color: C.cream, fontWeight: 700, fontSize: 15 }}>{s.full_name}</div>
-                  <div style={{ color: '#94a3b8', fontSize: 12, textTransform: 'capitalize', marginTop: 2 }}>{s.role}</div>
-                </div>
-                <span style={{ marginLeft: 'auto', color: '#4a5568', fontSize: 18 }}>›</span>
-              </button>
-            );
-          })}
+          <div style={{ fontSize: 13, color: theme.dark, opacity: 0.5, marginTop: 4 }}>
+            Système de gestion hôtelière
+          </div>
         </div>
-      )}
 
-      {selected && (
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <button onClick={() => setSelected(null)} style={{
-            alignSelf: 'flex-start', background: 'none', color: '#94a3b8', fontSize: 14, padding: '0 0 20px',
-          }}>← Retour</button>
+        {/* Staff selector */}
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: theme.dark, opacity: 0.6, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Membre du personnel
+          </label>
+          <select
+            value={selectedId}
+            onChange={e => { setSelectedId(e.target.value); setPin(['', '', '', '']); setError(''); pinRefs[0].current?.focus(); }}
+            style={{
+              width: '100%', border: `1.5px solid rgba(31,42,46,0.2)`, borderRadius: 8,
+              padding: '9px 12px', fontSize: 14, fontFamily: theme.font,
+              background: theme.white, color: theme.dark, outline: 'none', cursor: 'pointer',
+            }}
+          >
+            {staffList.map(s => (
+              <option key={s.id} value={s.id}>{s.full_name} — {s.role}</option>
+            ))}
+          </select>
+        </div>
 
-          <div style={{ fontSize: 15, color: C.cream, fontWeight: 700, marginBottom: 28 }}>
-            PIN — {selected.full_name}
-          </div>
-
-          {/* Dots */}
-          <div style={{ display: 'flex', gap: 18, marginBottom: 8, animation: shake ? 'shake .4s' : 'none' }}>
-            {[0,1,2,3].map(i => (
-              <div key={i} style={{
-                width: 18, height: 18, borderRadius: 9,
-                background: i < pin.length ? C.teal : 'transparent',
-                border: `2px solid ${i < pin.length ? C.teal : '#4a5568'}`,
-                transition: 'all .12s',
-              }} />
+        {/* PIN input */}
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: theme.dark, opacity: 0.6, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Code PIN
+          </label>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            {pin.map((digit, i) => (
+              <input
+                key={i}
+                ref={pinRefs[i]}
+                type="password"
+                inputMode="numeric"
+                maxLength={1}
+                value={digit}
+                onChange={e => handlePinChange(i, e.target.value)}
+                onKeyDown={e => handlePinKeyDown(i, e)}
+                onFocus={e => e.target.select()}
+                style={{
+                  width: 56, height: 64, textAlign: 'center', fontSize: 28, fontWeight: 700,
+                  border: `1.5px solid ${digit ? theme.teal : 'rgba(31,42,46,0.2)'}`,
+                  borderRadius: 10, outline: 'none', fontFamily: theme.font,
+                  color: theme.dark, background: theme.cream,
+                  transition: 'border-color 0.15s',
+                }}
+                autoFocus={i === 0}
+              />
             ))}
           </div>
+        </div>
 
-          {error && (
-            <div style={{ color: C.coral, fontSize: 13, marginBottom: 8, height: 20 }}>{error}</div>
-          )}
-          {!error && <div style={{ height: 28 }} />}
-
-          {/* PIN pad */}
+        {/* Error */}
+        {error && (
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, width: '100%',
+            textAlign: 'center', color: theme.coral, fontSize: 13,
+            fontWeight: 600, marginBottom: 16,
+            padding: '8px 12px', background: 'rgba(255,127,80,0.08)',
+            borderRadius: 8,
           }}>
-            {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((d, i) => (
-              <button key={i} onClick={() => {
-                if (!d) return;
-                if (d === '⌫') { setPin(p => p.slice(0, -1)); return; }
-                addDigit(d);
-              }} style={{
-                height: 68, borderRadius: 14, fontSize: 24, fontWeight: 700,
-                background: d ? '#2a3840' : 'transparent',
-                color: d === '⌫' ? C.coral : C.cream,
-                opacity: d ? 1 : 0,
-                transition: 'background .1s',
-              }}>{d}</button>
-            ))}
+            {error}
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Submit */}
+        <button
+          onClick={() => pin.every(d => d) && submitPin(pin.join(''))}
+          style={{
+            width: '100%', background: theme.teal, color: theme.white,
+            borderRadius: 8, padding: '12px 20px', border: 'none',
+            fontWeight: 700, fontSize: 15, fontFamily: theme.font,
+            cursor: 'pointer', letterSpacing: 0.5,
+          }}
+        >
+          Connexion
+        </button>
+      </div>
     </div>
   );
 }

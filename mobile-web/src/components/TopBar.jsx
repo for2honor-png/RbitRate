@@ -1,37 +1,33 @@
-const SCREEN_TITLES = {
-  dashboard: 'Tableau de bord',
-  rooms:     'Chambres',
-  checkin:   'Check-in',
-  guests:    'Clients',
-  shifts:    'Shifts',
-  canaux:    'Canaux OTA',
-};
+import React from 'react';
+import { theme } from '../theme.js';
+import { useAuth, useApp } from '../App.jsx';
 
-export default function TopBar({ currentScreen, staff }) {
+export default function TopBar({ navItems }) {
+  const { staff } = useAuth();
+  const { page } = useApp();
+
+  const currentNav = navItems.find(n => n.key === page);
+
+  function initials(name) {
+    return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  }
+
   return (
     <div style={{
-      height: 56,
-      background: 'white',
-      borderBottom: '1px solid #e8e2d8',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '0 32px',
-      flexShrink: 0,
+      height: 48, background: theme.white, borderBottom: `1px solid rgba(31,42,46,0.1)`,
+      display: 'flex', alignItems: 'center', paddingLeft: 24, paddingRight: 20,
+      gap: 12, flexShrink: 0,
     }}>
-      <div style={{ fontSize: 18, fontWeight: 700, color: '#1f2a2e' }}>
-        {SCREEN_TITLES[currentScreen] || currentScreen}
+      <div style={{ flex: 1, fontSize: 14, fontWeight: 700, color: theme.dark }}>
+        {currentNav?.label || 'Tableau de bord'}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: '#666' }}>
-        <span>{staff?.full_name}</span>
-        <span style={{
-          padding: '3px 10px',
-          background: '#0f766e18', color: '#0f766e',
-          borderRadius: 20, fontSize: 11, fontWeight: 600,
-          textTransform: 'capitalize',
-        }}>
-          {staff?.role}
-        </span>
+
+      <div style={{
+        width: 30, height: 30, borderRadius: '50%', background: theme.teal,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: theme.white, fontSize: 11, fontWeight: 700,
+      }}>
+        {initials(staff.full_name)}
       </div>
     </div>
   );

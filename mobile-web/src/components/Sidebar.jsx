@@ -1,104 +1,125 @@
-import { C } from '../theme';
+import React, { useState, useEffect } from 'react';
+import { theme } from '../theme.js';
+import { useAuth, useApp, NAV_ITEMS } from '../App.jsx';
+import { invoke } from '../db.js';
 
-const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Tableau de bord', icon: '🏠' },
-  { id: 'rooms',     label: 'Chambres',        icon: '🛏️' },
-  { id: 'checkin',   label: 'Check-in',        icon: '✅' },
-  { id: 'guests',    label: 'Clients',         icon: '👥' },
-  { id: 'shifts',    label: 'Shifts',          icon: '⏱️' },
-  { id: 'canaux',    label: 'Canaux OTA',      icon: '📡' },
-];
+export default function Sidebar() {
+  const { staff, logout, can } = useAuth();
+  const { page, setPage, selectedPropertyId, setSelectedPropertyId, propertyVersion } = useApp();
+  const [properties, setProperties] = useState([]);
 
-export default function Sidebar({ currentScreen, onNavigate, staff, property, onLogout }) {
+  useEffect(() => {
+    invoke('properties:getAll', {}).then(list => {
+      if (!list) return;
+      setProperties(list);
+      if (list.length > 0 && !selectedPropertyId) {
+        setSelectedPropertyId(list[0].id);
+      }
+    });
+  }, [propertyVersion]);
+
+  const selectedProp = properties.find(p => p.id === selectedPropertyId);
+
+  const roleLabels = {
+    owner: 'Propriétaire', manager: 'Manager',
+    receptionist: 'Réceptionniste', chef: 'Chef', accountant: 'Comptable',
+  };
+
+  function initials(name) {
+    return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  }
+
+  const visibleItems = NAV_ITEMS.filter(item => !item.perm || can(item.perm));
+
   return (
     <div style={{
-      width: 240,
-      height: '100vh',
-      background: '#1f2a2e',
-      display: 'flex',
-      flexDirection: 'column',
-      flexShrink: 0,
-      position: 'sticky',
-      top: 0,
-      overflowY: 'auto',
+      width: 240, background: theme.dark, display: 'flex', flexDirection: 'column',
+      height: '100vh', flexShrink: 0, overflow: 'hidden',
     }}>
-      {/* Logo */}
-      <div style={{
-        padding: '24px 20px 16px',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
-      }}>
-        <div style={{ fontSize: 22, fontWeight: 900, color: '#0f766e', letterSpacing: '-0.5px' }}>
-          🐇 RbitRate
+      {/* Header / property */}
+      <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="/rbitrate-logo.svg" alt="RbitRate" style={{ width: 28, height: 28, flexShrink: 0 }}
+            onError={e => { e.target.style.display = 'none'; }} />
+          <div style={{ fontSize: 20, fontWeight: 900, color: theme.white, letterSpacing: -0.5 }}>
+            <span style={{ color: theme.teal }}>R</span>bitRate
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
-          {property?.display_name || 'Chargement...'}
-        </div>
+        {properties.length > 1 ? (
+          <select
+            value={selectedPropertyId || ''}
+            onChange={e => setSelectedPropertyId(e.target.value)}
+            style={{
+              marginTop: 10, width: '100%', background: 'rgba(255,255,255,0.08)',
+              color: theme.white, border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: 6, padding: '6px 8px', fontSize: 12, fontFamily: theme.font,
+              cursor: 'pointer', outline: 'none',
+            }}
+          >
+            {properties.map(p => <option key={p.id} value={p.id}>{p.display_name}</option>)}
+          </select>
+        ) : (
+          <div style={{ marginTop: 8, fontSize: 12, color: theme.white, opacity: 0.6, fontWeight: 600 }}>
+            {selectedProp?.display_name || 'Aucune propriété'}
+          </div>
+        )}
       </div>
 
-      {/* Nav */}
-      <nav style={{ flex: 1, padding: '12px 0' }}>
-        {NAV_ITEMS.map(item => {
-          const active = currentScreen === item.id;
+      {/* Navigation */}
+      <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+        {visibleItems.map(item => {
+          const isActive = page === item.key;
           return (
             <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
+              key={item.key}
+              onClick={() => setPage(item.key)}
               style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '11px 20px',
-                background: active ? 'rgba(15,118,110,0.15)' : 'transparent',
-                borderLeft: active ? '3px solid #0f766e' : '3px solid transparent',
-                border: 'none',
-                borderRadius: 0,
-                color: active ? '#0f766e' : 'rgba(255,255,255,0.6)',
-                fontSize: 13,
-                fontWeight: active ? 700 : 400,
+                display: 'flex', alignItems: 'center', gap: 10,
+                width: '100%', padding: '10px 16px',
+                background: isActive ? 'rgba(15,118,110,0.18)' : 'transparent',
+                border: 'none', borderLeft: isActive ? `3px solid ${theme.teal}` : '3px solid transparent',
+                color: isActive ? theme.teal : 'rgba(255,255,255,0.7)',
                 cursor: 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.15s',
-                minHeight: 0,
+                fontSize: 13, fontFamily: theme.font, fontWeight: isActive ? 700 : 400,
+                textAlign: 'left', transition: 'all 0.15s',
               }}
-              onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
-              onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
             >
-              <span style={{ fontSize: 16 }}>{item.icon}</span>
+              <span style={{ fontSize: 15 }}>{item.icon}</span>
               <span>{item.label}</span>
             </button>
           );
         })}
       </nav>
 
-      {/* Staff + logout */}
-      <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+      {/* Staff info + logout */}
+      <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
-            width: 34, height: 34, borderRadius: '50%',
-            background: '#0f766e',
+            width: 32, height: 32, borderRadius: '50%', background: theme.teal,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 13, fontWeight: 700, color: 'white', flexShrink: 0,
+            color: theme.white, fontSize: 12, fontWeight: 700, flexShrink: 0,
           }}>
-            {staff?.full_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+            {initials(staff.full_name)}
           </div>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>{staff?.full_name}</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'capitalize' }}>{staff?.role}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ color: theme.white, fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {staff.full_name}
+            </div>
+            <div style={{ color: theme.white, opacity: 0.45, fontSize: 11 }}>
+              {roleLabels[staff.role] || staff.role}
+            </div>
           </div>
+          <button
+            onClick={logout}
+            title="Déconnexion"
+            style={{
+              background: 'rgba(255,127,80,0.15)', border: 'none', color: theme.coral,
+              borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 12, fontFamily: theme.font,
+            }}
+          >
+            ⏻
+          </button>
         </div>
-        <button
-          onClick={onLogout}
-          style={{
-            width: '100%', padding: '8px',
-            background: 'rgba(255,127,80,0.15)',
-            border: '1px solid rgba(255,127,80,0.3)',
-            borderRadius: 8, color: '#ff7f50',
-            fontSize: 12, fontWeight: 600, cursor: 'pointer', minHeight: 0,
-          }}
-        >
-          Déconnexion
-        </button>
       </div>
     </div>
   );
