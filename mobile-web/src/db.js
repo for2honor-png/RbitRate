@@ -112,19 +112,19 @@ export const db = {
   }).then(r => r.ok),
 
   // Shifts
-  'shifts:getActive': (d) => sb(`shifts?property_id=eq.${d.property_id}&status=eq.open&deleted_at=is.null&select=*,staff(full_name,role)`),
+  'shifts:getActive': (d) => sb(`shifts?property_id=eq.${d.property_id}&status=eq.open&deleted_at=is.null&select=*,staff!shifts_staff_id_fkey(full_name,role)`),
   'shifts:open': (d) => post('shifts', { ...d, id: crypto.randomUUID(), status: 'open', opened_at: new Date().toISOString(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
   'shifts:close': (d) => patch(`shifts?id=eq.${d.shift_id}`, { status: 'closed', closed_at: new Date().toISOString(), closing_cash: d.closing_cash, expected_cash: d.expected_cash, discrepancy: d.discrepancy, updated_at: new Date().toISOString() }),
   'shifts:getById': async (d) => {
-    const shift = await sb(`shifts?id=eq.${d.id}&select=*,staff(full_name,role)`).then(r => r?.[0]);
-    const transactions = await sb(`transactions?shift_id=eq.${d.id}&deleted_at=is.null&order=created_at.asc&select=*,staff(full_name,role)`);
+    const shift = await sb(`shifts?id=eq.${d.id}&select=*,staff!shifts_staff_id_fkey(full_name,role)`).then(r => r?.[0]);
+    const transactions = await sb(`transactions?shift_id=eq.${d.id}&deleted_at=is.null&order=created_at.asc&select=*,staff!transactions_recorded_by_fkey(full_name,role)`);
     return { shift, transactions };
   },
-  'shifts:checkOpen': (d) => sb(`shifts?property_id=eq.${d.property_id}&status=eq.open&deleted_at=is.null&select=id,staff_id,opened_at,opening_cash,staff(full_name,role)`).then(shifts => ({ hasOpenShift: shifts.length > 0, shifts })),
+  'shifts:checkOpen': (d) => sb(`shifts?property_id=eq.${d.property_id}&status=eq.open&deleted_at=is.null&select=id,staff_id,opened_at,opening_cash,staff!shifts_staff_id_fkey(full_name,role)`).then(shifts => ({ hasOpenShift: shifts.length > 0, shifts })),
 
   // Transactions
   'transactions:create': (d) => post('transactions', { ...d, id: crypto.randomUUID(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
-  'transactions:getByShift': (d) => sb(`transactions?shift_id=eq.${d.shift_id}&deleted_at=is.null&order=created_at.asc&select=*,staff(full_name,role)`),
+  'transactions:getByShift': (d) => sb(`transactions?shift_id=eq.${d.shift_id}&deleted_at=is.null&order=created_at.asc&select=*,staff!transactions_recorded_by_fkey(full_name,role)`),
 
   // Finance
   'finance:getSummary': async (d) => {
@@ -137,11 +137,11 @@ export const db = {
     }[d.period] || `created_at=gte.${today}T00:00:00`;
     const [totals, byStaff] = await Promise.all([
       sb(`transactions?property_id=eq.${d.property_id}&deleted_at=is.null&${periodFilter}&select=type,category,payment_method,amount`),
-      sb(`transactions?property_id=eq.${d.property_id}&deleted_at=is.null&${periodFilter}&select=recorded_by,type,amount,staff(full_name,role)`),
+      sb(`transactions?property_id=eq.${d.property_id}&deleted_at=is.null&${periodFilter}&select=recorded_by,type,amount,staff!transactions_recorded_by_fkey(full_name,role)`),
     ]);
     return { totals, byStaff, chartData: [] };
   },
-  'finance:getRecentTransactions': (d) => sb(`transactions?property_id=eq.${d.property_id}&deleted_at=is.null&order=created_at.desc&limit=${d.limit || 10}&select=*,staff(full_name,role)`),
+  'finance:getRecentTransactions': (d) => sb(`transactions?property_id=eq.${d.property_id}&deleted_at=is.null&order=created_at.desc&limit=${d.limit || 10}&select=*,staff!transactions_recorded_by_fkey(full_name,role)`),
   'finance:getTodayTotals': async (d) => {
     const today = new Date().toISOString().split('T')[0];
     const txns = await sb(`transactions?property_id=eq.${d.property_id}&deleted_at=is.null&created_at=gte.${today}T00:00:00&select=type,amount`);
@@ -235,7 +235,8 @@ export const db = {
   'templates:delete': (d) => patch(`rotation_templates?id=eq.${d.id}`, { deleted_at: new Date().toISOString() }),
 
   // Time off
-  'timeoff:getAll': (d) => sb(`time_off_requests?${d?.staff_id ? `staff_id=eq.${d.staff_id}&` : ''}deleted_at=is.null&order=start_date.desc&select=*,staff(full_name,role)`),
+  'timeoff:getAll': (d) => sb(`time_off_requests?property_id=eq.${d.property_id}&order=created_at.desc&select=*,staff!time_off_requests_staff_id_fkey(full_name,role),reviewer:staff!time_off_requests_reviewed_by_fkey(full_name)`).then(r => Array.isArray(r) ? r : []),
+  'timeoff:getPending': (d) => sb(`time_off_requests?property_id=eq.${d.property_id}&status=eq.pending&order=created_at.desc&select=*,staff!time_off_requests_staff_id_fkey(full_name,role)`).then(r => Array.isArray(r) ? r : []),
   'timeoff:create': (d) => post('time_off_requests', { ...d, id: crypto.randomUUID(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
   'timeoff:review': (d) => patch(`time_off_requests?id=eq.${d.id}`, { status: d.status, reviewed_by: d.reviewed_by, reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
   'timeoff:delete': (d) => patch(`time_off_requests?id=eq.${d.id}`, { deleted_at: new Date().toISOString() }),

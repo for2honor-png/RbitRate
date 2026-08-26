@@ -635,17 +635,17 @@ function TimeoffTab({ propertyId }) {
   }
 
   function RequestCard({ req }) {
-    const sc = staffColor(req.role);
+    const sc = staffColor(req.staff?.role);
     const days = dayCount(req.start_date, req.end_date);
     return (
       <div style={{ background: theme.white, borderRadius: 12, padding: '14px 16px', marginBottom: 8, border: '1px solid rgba(31,42,46,0.08)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <div style={{ width: 32, height: 32, borderRadius: '50%', background: sc.color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
-            {staffInitials(req.full_name)}
+            {staffInitials(req.staff?.full_name)}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-              <span style={{ fontWeight: 800, fontSize: 13 }}>{req.full_name}</span>
+              <span style={{ fontWeight: 800, fontSize: 13 }}>{req.staff?.full_name}</span>
               <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, fontWeight: 700,
                 background: req.status === 'pending' ? '#fef3c7' : req.status === 'approved' ? '#dcfce7' : '#fee2e2',
                 color:      req.status === 'pending' ? '#92400e' : req.status === 'approved' ? '#15803d' : '#dc2626' }}>
