@@ -1,10 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { theme } from '../theme.js';
-import { useAuth, useApp, NAV_ITEMS } from '../App.jsx';
+import { useAuth, useApp } from '../App.jsx';
 import { invoke } from '../db.js';
 
+const NAV_SECTIONS = [
+  {
+    title: 'PRINCIPAL',
+    items: [
+      { id: 'dashboard',  label: 'Dashboard',   icon: '🏠' },
+      { id: 'rooms',      label: 'Chambres',     icon: '🛏️' },
+      { id: 'checkin',    label: 'Check-in',     icon: '✅' },
+      { id: 'guests',     label: 'Clients',      icon: '👥' },
+    ],
+  },
+  {
+    title: 'FINANCES',
+    items: [
+      { id: 'shifts',     label: 'Shifts',       icon: '⏱️' },
+      { id: 'finance',    label: 'Finances',     icon: '💰' },
+      { id: 'invoices',   label: 'Factures',     icon: '🧾' },
+    ],
+  },
+  {
+    title: 'OPÉRATIONS',
+    items: [
+      { id: 'restaurant', label: 'Restaurant',   icon: '🍽️' },
+      { id: 'canaux',     label: 'Canaux OTA',   icon: '📡' },
+      { id: 'planning',   label: 'Planning',     icon: '🗓️' },
+    ],
+  },
+  {
+    title: 'ADMINISTRATION',
+    items: [
+      { id: 'equipe',     label: 'Équipe',       icon: '👤' },
+      { id: 'properties', label: 'Propriétés',   icon: '⚙️' },
+    ],
+  },
+];
+
 export default function Sidebar() {
-  const { staff, logout, can } = useAuth();
+  const { staff, logout } = useAuth();
   const { page, setPage, selectedPropertyId, setSelectedPropertyId, propertyVersion } = useApp();
   const [properties, setProperties] = useState([]);
 
@@ -26,76 +61,82 @@ export default function Sidebar() {
   };
 
   function initials(name) {
-    return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    return (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   }
-
-  const visibleItems = NAV_ITEMS.filter(item => !item.perm || can(item.perm));
 
   return (
     <div style={{
-      width: 240, background: theme.dark, display: 'flex', flexDirection: 'column',
+      width: 220, background: theme.dark, display: 'flex', flexDirection: 'column',
       height: '100vh', flexShrink: 0, overflow: 'hidden',
     }}>
       {/* Header / property */}
-      <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontSize: 20, fontWeight: 900, color: theme.white, letterSpacing: -0.5 }}>
-            <span style={{ color: theme.teal }}>R</span>bitRate
-          </div>
+      <div style={{ padding: '18px 16px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ fontSize: 18, fontWeight: 900, color: theme.white, letterSpacing: -0.5, marginBottom: 8 }}>
+          <span style={{ color: theme.teal }}>R</span>bitRate
         </div>
         {properties.length > 1 ? (
           <select
             value={selectedPropertyId || ''}
             onChange={e => setSelectedPropertyId(e.target.value)}
             style={{
-              marginTop: 10, width: '100%', background: 'rgba(255,255,255,0.08)',
+              width: '100%', background: 'rgba(255,255,255,0.08)',
               color: theme.white, border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: 6, padding: '6px 8px', fontSize: 12, fontFamily: theme.font,
+              borderRadius: 6, padding: '5px 8px', fontSize: 11, fontFamily: theme.font,
               cursor: 'pointer', outline: 'none',
             }}
           >
             {properties.map(p => <option key={p.id} value={p.id}>{p.display_name}</option>)}
           </select>
         ) : (
-          <div style={{ marginTop: 8, fontSize: 12, color: theme.white, opacity: 0.6, fontWeight: 600 }}>
+          <div style={{ fontSize: 11, color: theme.white, opacity: 0.5, fontWeight: 600 }}>
             {selectedProp?.display_name || 'Aucune propriété'}
           </div>
         )}
       </div>
 
-      {/* Navigation */}
-      <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-        {visibleItems.map(item => {
-          const isActive = page === item.key;
-          return (
-            <button
-              key={item.key}
-              onClick={() => setPage(item.key)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                width: '100%', padding: '10px 16px',
-                background: isActive ? 'rgba(15,118,110,0.18)' : 'transparent',
-                border: 'none', borderLeft: isActive ? `3px solid ${theme.teal}` : '3px solid transparent',
-                color: isActive ? theme.teal : 'rgba(255,255,255,0.7)',
-                cursor: 'pointer',
-                fontSize: 13, fontFamily: theme.font, fontWeight: isActive ? 700 : 400,
-                textAlign: 'left', transition: 'all 0.15s',
-              }}
-            >
-              <span style={{ fontSize: 15 }}>{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
+      {/* Sectioned navigation */}
+      <nav style={{ flex: 1, overflowY: 'auto', padding: '6px 0' }}>
+        {NAV_SECTIONS.map(section => (
+          <div key={section.title} style={{ marginBottom: 4 }}>
+            <div style={{
+              fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.25)',
+              letterSpacing: '1.5px', padding: '8px 20px 4px',
+            }}>
+              {section.title}
+            </div>
+            {section.items.map(item => {
+              const active = page === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setPage(item.id)}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '9px 20px',
+                    background: active ? 'rgba(15,118,110,0.15)' : 'transparent',
+                    borderLeft: active ? '3px solid #0f766e' : '3px solid transparent',
+                    border: 'none',
+                    color: active ? '#0f766e' : 'rgba(255,255,255,0.6)',
+                    fontSize: 13, fontWeight: active ? 700 : 400,
+                    cursor: 'pointer', textAlign: 'left', fontFamily: theme.font,
+                  }}
+                >
+                  <span style={{ fontSize: 15 }}>{item.icon}</span>
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* Staff info + logout */}
       <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
-            width: 32, height: 32, borderRadius: '50%', background: theme.teal,
+            width: 30, height: 30, borderRadius: '50%', background: theme.teal, flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: theme.white, fontSize: 12, fontWeight: 700, flexShrink: 0,
+            color: theme.white, fontSize: 11, fontWeight: 700,
           }}>
             {initials(staff.full_name)}
           </div>
@@ -103,7 +144,7 @@ export default function Sidebar() {
             <div style={{ color: theme.white, fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {staff.full_name}
             </div>
-            <div style={{ color: theme.white, opacity: 0.45, fontSize: 11 }}>
+            <div style={{ color: theme.white, opacity: 0.4, fontSize: 10 }}>
               {roleLabels[staff.role] || staff.role}
             </div>
           </div>
@@ -112,11 +153,9 @@ export default function Sidebar() {
             title="Déconnexion"
             style={{
               background: 'rgba(255,127,80,0.15)', border: 'none', color: theme.coral,
-              borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 12, fontFamily: theme.font,
+              borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 12,
             }}
-          >
-            ⏻
-          </button>
+          >⏻</button>
         </div>
       </div>
     </div>

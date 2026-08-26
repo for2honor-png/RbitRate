@@ -53,18 +53,20 @@ function resolvePermissions(staffRecord) {
 }
 
 export const NAV_ITEMS = [
-  { key: 'dashboard',  label: 'Tableau de bord', icon: '⊞' },
-  { key: 'rooms',      label: 'Chambres',         icon: '🛏' },
-  { key: 'checkin',    label: 'Check-in',          icon: '→' },
-  { key: 'guests',     label: 'Clients',           icon: '👤', perm: 'can_manage_clients' },
-  { key: 'finances',   label: 'Finances',          icon: '💰', perm: 'can_view_all_finances' },
-  { key: 'shifts',     label: 'Shifts',            icon: '🕐' },
-  { key: 'channels',   label: 'Canaux OTA',         icon: '📡', perm: 'can_manage_ota' },
-  { key: 'invoices',   label: 'Factures',          icon: '📄', perm: 'can_view_invoices' },
-  { key: 'restaurant', label: 'Restaurant',        icon: '🍽',  perm: 'can_manage_restaurant_menu' },
-  { key: 'equipe',     label: 'Équipe',            icon: '👥', perm: 'can_manage_staff' },
-  { key: 'planning',   label: 'Planning',          icon: '🗓️', perm: 'can_manage_staff' },
-  { key: 'properties', label: 'Propriétés',        icon: '🏨', perm: 'can_manage_properties' },
+  { key: 'dashboard',  label: 'Tableau de bord', icon: '🏠' },
+  { key: 'rooms',      label: 'Chambres',         icon: '🛏️' },
+  { key: 'checkin',    label: 'Check-in',         icon: '✅' },
+  { key: 'guests',     label: 'Clients',          icon: '👥' },
+  { key: 'shifts',     label: 'Shifts',           icon: '⏱️' },
+  { key: 'finances',   label: 'Finances',         icon: '💰' },
+  { key: 'finance',    label: 'Finances',         icon: '💰' },
+  { key: 'invoices',   label: 'Factures',         icon: '🧾' },
+  { key: 'restaurant', label: 'Restaurant',       icon: '🍽️' },
+  { key: 'channels',   label: 'Canaux OTA',       icon: '📡' },
+  { key: 'canaux',     label: 'Canaux OTA',       icon: '📡' },
+  { key: 'planning',   label: 'Planning',         icon: '🗓️' },
+  { key: 'equipe',     label: 'Équipe',           icon: '👤' },
+  { key: 'properties', label: 'Propriétés',       icon: '⚙️' },
 ];
 
 const MOBILE_NAV = [
@@ -72,7 +74,17 @@ const MOBILE_NAV = [
   { id: 'rooms',     icon: '🛏️', label: 'Chambres' },
   { id: 'checkin',   icon: '✅', label: 'Check-in' },
   { id: 'guests',    icon: '👥', label: 'Clients' },
-  { id: 'shifts',    icon: '⏱️', label: 'Shifts' },
+];
+
+const MOBILE_MORE = [
+  { id: 'shifts',     label: 'Shifts',      icon: '⏱️' },
+  { id: 'finance',    label: 'Finances',    icon: '💰' },
+  { id: 'invoices',   label: 'Factures',    icon: '🧾' },
+  { id: 'restaurant', label: 'Restaurant',  icon: '🍽️' },
+  { id: 'canaux',     label: 'OTA',         icon: '📡' },
+  { id: 'planning',   label: 'Planning',    icon: '🗓️' },
+  { id: 'equipe',     label: 'Équipe',      icon: '👤' },
+  { id: 'properties', label: 'Propriétés',  icon: '⚙️' },
 ];
 
 function initials(name) {
@@ -88,6 +100,7 @@ export default function App() {
   const [checkInRoomId, setCheckInRoomId]           = useState(null);
   const [isDesktop, setIsDesktop]     = useState(() => window.innerWidth >= 768);
   const [properties, setProperties]   = useState([]);
+  const [showMore, setShowMore]        = useState(false);
 
   useEffect(() => {
     const fn = () => setIsDesktop(window.innerWidth >= 768);
@@ -148,7 +161,9 @@ export default function App() {
     checkin:    <CheckIn />,
     shifts:     <Shifts />,
     finances:   <Finance />,
+    finance:    <Finance />,
     channels:   <Channels />,
+    canaux:     <Channels />,
     restaurant: <Restaurant />,
     invoices:   <Invoices />,
     equipe:     <Equipe />,
@@ -244,7 +259,73 @@ export default function App() {
                   </button>
                 );
               })}
+              {/* Plus button */}
+              <button onClick={() => setShowMore(s => !s)} style={{
+                flex: 1, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', gap: 2,
+                background: 'transparent', border: 'none', minHeight: 44,
+                color: showMore ? '#0f766e' : 'rgba(255,255,255,0.4)',
+                fontSize: 10, cursor: 'pointer', padding: '6px 0',
+              }}>
+                <span style={{ fontSize: 20 }}>☰</span>
+                <span style={{ fontWeight: showMore ? 700 : 400 }}>Plus</span>
+              </button>
             </div>
+
+            {/* More drawer */}
+            {showMore && (
+              <>
+                <div
+                  onClick={() => setShowMore(false)}
+                  style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200 }}
+                />
+                <div style={{
+                  position: 'fixed', bottom: 0, left: 0, right: 0,
+                  background: '#1f2a2e', borderRadius: '20px 20px 0 0',
+                  padding: '20px 0 40px', zIndex: 201,
+                  maxHeight: '70vh', overflowY: 'auto',
+                }}>
+                  <div style={{
+                    width: 40, height: 4, background: 'rgba(255,255,255,0.2)',
+                    borderRadius: 2, margin: '0 auto 20px',
+                  }} />
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+                    gap: 8, padding: '0 16px',
+                  }}>
+                    {MOBILE_MORE.map(item => (
+                      <button key={item.id} onClick={() => { setPage(item.id); setShowMore(false); }} style={{
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', gap: 6,
+                        padding: '16px 8px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: 'none', borderRadius: 12,
+                        color: 'rgba(255,255,255,0.8)',
+                        fontSize: 11, cursor: 'pointer', fontFamily: theme.font,
+                      }}>
+                        <span style={{ fontSize: 24 }}>{item.icon}</span>
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{
+                    margin: '20px 16px 0', padding: 16,
+                    background: 'rgba(255,255,255,0.05)', borderRadius: 12,
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}>
+                    <div>
+                      <div style={{ color: 'white', fontSize: 13, fontWeight: 600 }}>{staff?.full_name}</div>
+                      <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textTransform: 'capitalize' }}>{staff?.role}</div>
+                    </div>
+                    <button onClick={() => { setShowMore(false); logout(); }} style={{
+                      padding: '8px 16px',
+                      background: 'rgba(255,127,80,0.2)', border: '1px solid rgba(255,127,80,0.4)',
+                      borderRadius: 8, color: '#ff7f50', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    }}>Déconnexion</button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
       </AppContext.Provider>
