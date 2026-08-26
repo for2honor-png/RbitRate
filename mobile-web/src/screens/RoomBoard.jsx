@@ -16,7 +16,7 @@ function Row({ label, value }) {
 }
 
 export default function RoomBoard({ ctx }) {
-  const { property, navigate } = ctx;
+  const { property, navigate, isDesktop } = ctx;
   const [rooms, setRooms]       = useState([]);
   const [resMap, setResMap]     = useState({});
   const [loading, setLoading]   = useState(true);
@@ -108,7 +108,7 @@ export default function RoomBoard({ ctx }) {
         <div style={{ textAlign: 'center', color: C.gray, padding: '40px 0' }}>Chargement...</div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(6, 1fr)' : 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
             {rooms.map(room => {
               const res        = resMap[room.id];
               const guestCount = res ? (res.reservation_guests?.length || 0) : 0;

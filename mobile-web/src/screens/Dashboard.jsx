@@ -3,7 +3,7 @@ import { api } from '../api';
 import { C } from '../theme';
 
 export default function Dashboard({ ctx }) {
-  const { staff, property, logout, navigate } = ctx;
+  const { staff, property, logout, navigate, isDesktop } = ctx;
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -28,18 +28,20 @@ export default function Dashboard({ ctx }) {
 
   return (
     <div style={{ padding: '20px 16px 8px' }}>
-      {/* Header */}
+      {/* Header — hide logout on desktop (sidebar has it) */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: C.dark }}>
+          <div style={{ fontSize: isDesktop ? 24 : 20, fontWeight: 900, color: C.dark }}>
             Bonjour, {staff?.full_name?.split(' ')[0]} 👋
           </div>
           <div style={{ fontSize: 13, color: C.gray, marginTop: 2 }}>{property?.display_name}</div>
         </div>
-        <button onClick={logout} style={{
-          background: 'none', color: C.gray, fontSize: 12, fontWeight: 600,
-          padding: '8px 0', minHeight: 0,
-        }}>Déconnexion</button>
+        {!isDesktop && (
+          <button onClick={logout} style={{
+            background: 'none', color: C.gray, fontSize: 12, fontWeight: 600,
+            padding: '8px 0', minHeight: 0,
+          }}>Déconnexion</button>
+        )}
       </div>
 
       {loading ? (
@@ -47,11 +49,12 @@ export default function Dashboard({ ctx }) {
       ) : (
         <>
           {/* KPI cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)', gap: 10, marginBottom: 16 }}>
             {[
-              { label: 'Occupées',  value: occupied,           color: C.coral },
-              { label: 'Libres',    value: available,          color: C.teal },
-              { label: 'Arrivées',  value: data?.arrivals || 0, color: C.saffron },
+              { label: 'Occupées',    value: occupied,            color: C.coral },
+              { label: 'Libres',      value: available,           color: C.teal },
+              { label: 'Arrivées',    value: data?.arrivals || 0, color: C.saffron },
+              { label: 'Nettoyage',   value: cleaning,            color: C.gray },
             ].map(s => (
               <div key={s.label} style={{
                 background: C.white, borderRadius: 12, padding: '14px 10px',
@@ -95,7 +98,7 @@ export default function Dashboard({ ctx }) {
           <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 10 }}>
             Actions rapides
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)', gap: 10 }}>
             {[
               { label: 'Check-in',  icon: '✚',  path: 'checkin', bg: C.teal },
               { label: 'Chambres',  icon: '🛏', path: 'rooms',   bg: '#2a3840' },

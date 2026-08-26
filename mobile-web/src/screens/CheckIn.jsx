@@ -56,7 +56,7 @@ function openPrintWindow(html) {
 }
 
 export default function CheckIn({ ctx, params }) {
-  const { property, navigate } = ctx;
+  const { property, navigate, isDesktop } = ctx;
 
   const roomId       = params?.get('room')    || '';
   const roomNumber   = params?.get('number')  || '';
@@ -873,107 +873,120 @@ export default function CheckIn({ ctx, params }) {
         )}
       </div>
 
-      <Section title="Identité du client">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <Field label="Nom *"><input value={form.last_name} onChange={e => setF('last_name', e.target.value)} style={iStyle} /></Field>
-          <Field label="Prénom *"><input value={form.first_name} onChange={e => setF('first_name', e.target.value)} style={iStyle} /></Field>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <Field label="Date de naissance"><input type="date" value={form.date_of_birth} onChange={e => setF('date_of_birth', e.target.value)} style={iStyle} /></Field>
-          <Field label="Lieu de naissance"><input value={form.place_of_birth} onChange={e => setF('place_of_birth', e.target.value)} style={iStyle} /></Field>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <Field label="Nationalité"><input value={form.nationality} onChange={e => setF('nationality', e.target.value)} style={iStyle} /></Field>
-          <Field label="Profession"><input value={form.profession} onChange={e => setF('profession', e.target.value)} style={iStyle} /></Field>
-        </div>
-        <Field label="Adresse permanente"><input value={form.permanent_address} onChange={e => setF('permanent_address', e.target.value)} style={iStyle} /></Field>
-      </Section>
-
-      <Section title="Document d'identité">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <Field label="Type">
-            <select value={form.document_type} onChange={e => setF('document_type', e.target.value)} style={iStyle}>
-              <option value="Passeport">Passeport</option>
-              <option value="CIN">CIN</option>
-              <option value="Titre de séjour">Titre de séjour</option>
-              <option value="Autre">Autre</option>
-            </select>
-          </Field>
-          <Field label="Numéro"><input value={form.document_number} onChange={e => setF('document_number', e.target.value)} style={iStyle} /></Field>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <Field label="Délivré à"><input value={form.document_issued_at} onChange={e => setF('document_issued_at', e.target.value)} style={iStyle} /></Field>
-          <Field label="Date délivrance"><input type="date" value={form.document_issued_date} onChange={e => setF('document_issued_date', e.target.value)} style={iStyle} /></Field>
-        </div>
-      </Section>
-
-      <Section title="Informations de voyage">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <Field label="Venant de"><input value={form.coming_from} onChange={e => setF('coming_from', e.target.value)} style={iStyle} /></Field>
-          <Field label="Allant à"><input value={form.going_to} onChange={e => setF('going_to', e.target.value)} style={iStyle} /></Field>
-        </div>
-        <Field label="N° entrée Maroc"><input value={form.morocco_entry_number} onChange={e => setF('morocco_entry_number', e.target.value)} style={iStyle} /></Field>
-        {!isPartialRoom && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Field label="Adultes"><input type="number" min="1" value={form.adults} onChange={e => setF('adults', e.target.value)} style={iStyle} /></Field>
-            <Field label="Enfants"><input type="number" min="0" value={form.children} onChange={e => setF('children', e.target.value)} style={iStyle} /></Field>
-          </div>
-        )}
-      </Section>
-
-      {!isPartialRoom && (
-        <Section title="Séjour & Paiement">
-          <Field label="Chambre *">
-            <RoomSelect value={form.room_id} onChange={v => {
-              setF('room_id', v);
-              const rm = roomsWithCap.find(r => r.id === v);
-              if (rm?.price_per_night && !form.price_per_night) setF('price_per_night', rm.price_per_night);
-            }} />
-          </Field>
-          {selectedRoom?.status === 'occupied' && (
-            <div style={{ background: '#fef9ee', border: `1.5px solid #e0a45850`, borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: C.dark }}>
-              ℹ️ Chambre partiellement occupée{selectedRoom.primary_guest_last_name ? ` par ${selectedRoom.primary_guest_last_name} ${selectedRoom.primary_guest_first_name}` : ''} ({selectedRoom.guest_count}/{selectedRoom.capacity})
+      <div style={{
+        display: isDesktop ? 'grid' : 'block',
+        gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr',
+        gap: isDesktop ? 20 : 0,
+        alignItems: 'start',
+      }}>
+        {/* Left column: identity + document */}
+        <div>
+          <Section title="Identité du client">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Field label="Nom *"><input value={form.last_name} onChange={e => setF('last_name', e.target.value)} style={iStyle} /></Field>
+              <Field label="Prénom *"><input value={form.first_name} onChange={e => setF('first_name', e.target.value)} style={iStyle} /></Field>
             </div>
-          )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Field label="Arrivée *"><input type="date" value={form.check_in_date} onChange={e => setF('check_in_date', e.target.value)} style={iStyle} /></Field>
-            <Field label="Départ *"><input type="date" min={form.check_in_date} value={form.check_out_date} onChange={e => setF('check_out_date', e.target.value)} style={iStyle} /></Field>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <Field label="Prix/nuit (MAD)"><input type="number" min="0" value={form.price_per_night} onChange={e => setF('price_per_night', parseFloat(e.target.value) || 0)} style={iStyle} /></Field>
-            <Field label="Canal">
-              <select value={form.channel} onChange={e => setF('channel', e.target.value)} style={iStyle}>
-                <option value="direct">Direct</option>
-                <option value="booking">Booking.com</option>
-                <option value="airbnb">Airbnb</option>
-                <option value="agoda">Agoda</option>
-                <option value="autre">Autre</option>
-              </select>
-            </Field>
-          </div>
-          {form.check_out_date && (
-            <div style={{ background: `${C.teal}15`, borderRadius: 10, padding: 14, marginBottom: 14, border: `1px solid ${C.teal}30` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: C.gray, fontSize: 13 }}>{nightsVal} nuit{nightsVal > 1 ? 's' : ''} × {form.price_per_night} MAD</span>
-                <span style={{ fontWeight: 800, color: C.teal, fontSize: 16 }}>{total} MAD</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Field label="Date de naissance"><input type="date" value={form.date_of_birth} onChange={e => setF('date_of_birth', e.target.value)} style={iStyle} /></Field>
+              <Field label="Lieu de naissance"><input value={form.place_of_birth} onChange={e => setF('place_of_birth', e.target.value)} style={iStyle} /></Field>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Field label="Nationalité"><input value={form.nationality} onChange={e => setF('nationality', e.target.value)} style={iStyle} /></Field>
+              <Field label="Profession"><input value={form.profession} onChange={e => setF('profession', e.target.value)} style={iStyle} /></Field>
+            </div>
+            <Field label="Adresse permanente"><input value={form.permanent_address} onChange={e => setF('permanent_address', e.target.value)} style={iStyle} /></Field>
+          </Section>
+
+          <Section title="Document d'identité">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Field label="Type">
+                <select value={form.document_type} onChange={e => setF('document_type', e.target.value)} style={iStyle}>
+                  <option value="Passeport">Passeport</option>
+                  <option value="CIN">CIN</option>
+                  <option value="Titre de séjour">Titre de séjour</option>
+                  <option value="Autre">Autre</option>
+                </select>
+              </Field>
+              <Field label="Numéro"><input value={form.document_number} onChange={e => setF('document_number', e.target.value)} style={iStyle} /></Field>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Field label="Délivré à"><input value={form.document_issued_at} onChange={e => setF('document_issued_at', e.target.value)} style={iStyle} /></Field>
+              <Field label="Date délivrance"><input type="date" value={form.document_issued_date} onChange={e => setF('document_issued_date', e.target.value)} style={iStyle} /></Field>
+            </div>
+          </Section>
+        </div>
+
+        {/* Right column: travel + stay */}
+        <div>
+          <Section title="Informations de voyage">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Field label="Venant de"><input value={form.coming_from} onChange={e => setF('coming_from', e.target.value)} style={iStyle} /></Field>
+              <Field label="Allant à"><input value={form.going_to} onChange={e => setF('going_to', e.target.value)} style={iStyle} /></Field>
+            </div>
+            <Field label="N° entrée Maroc"><input value={form.morocco_entry_number} onChange={e => setF('morocco_entry_number', e.target.value)} style={iStyle} /></Field>
+            {!isPartialRoom && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <Field label="Adultes"><input type="number" min="1" value={form.adults} onChange={e => setF('adults', e.target.value)} style={iStyle} /></Field>
+                <Field label="Enfants"><input type="number" min="0" value={form.children} onChange={e => setF('children', e.target.value)} style={iStyle} /></Field>
               </div>
-            </div>
+            )}
+          </Section>
+
+          {!isPartialRoom && (
+            <Section title="Séjour & Paiement">
+              <Field label="Chambre *">
+                <RoomSelect value={form.room_id} onChange={v => {
+                  setF('room_id', v);
+                  const rm = roomsWithCap.find(r => r.id === v);
+                  if (rm?.price_per_night && !form.price_per_night) setF('price_per_night', rm.price_per_night);
+                }} />
+              </Field>
+              {selectedRoom?.status === 'occupied' && (
+                <div style={{ background: '#fef9ee', border: `1.5px solid #e0a45850`, borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: C.dark }}>
+                  ℹ️ Chambre partiellement occupée{selectedRoom.primary_guest_last_name ? ` par ${selectedRoom.primary_guest_last_name} ${selectedRoom.primary_guest_first_name}` : ''} ({selectedRoom.guest_count}/{selectedRoom.capacity})
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <Field label="Arrivée *"><input type="date" value={form.check_in_date} onChange={e => setF('check_in_date', e.target.value)} style={iStyle} /></Field>
+                <Field label="Départ *"><input type="date" min={form.check_in_date} value={form.check_out_date} onChange={e => setF('check_out_date', e.target.value)} style={iStyle} /></Field>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <Field label="Prix/nuit (MAD)"><input type="number" min="0" value={form.price_per_night} onChange={e => setF('price_per_night', parseFloat(e.target.value) || 0)} style={iStyle} /></Field>
+                <Field label="Canal">
+                  <select value={form.channel} onChange={e => setF('channel', e.target.value)} style={iStyle}>
+                    <option value="direct">Direct</option>
+                    <option value="booking">Booking.com</option>
+                    <option value="airbnb">Airbnb</option>
+                    <option value="agoda">Agoda</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </Field>
+              </div>
+              {form.check_out_date && (
+                <div style={{ background: `${C.teal}15`, borderRadius: 10, padding: 14, marginBottom: 14, border: `1px solid ${C.teal}30` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: C.gray, fontSize: 13 }}>{nightsVal} nuit{nightsVal > 1 ? 's' : ''} × {form.price_per_night} MAD</span>
+                    <span style={{ fontWeight: 800, color: C.teal, fontSize: 16 }}>{total} MAD</span>
+                  </div>
+                </div>
+              )}
+              <Field label="Paiement">
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[{ v: 'checkout', l: 'À la sortie' }, { v: 'immediate', l: 'Immédiat' }, { v: 'deposit', l: 'Acompte' }].map(p => (
+                    <button key={p.v} onClick={() => setF('payment_type', p.v)} style={{
+                      flex: 1, padding: '10px 6px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+                      background: form.payment_type === p.v ? C.teal : '#f0ece6',
+                      color: form.payment_type === p.v ? C.white : C.dark,
+                      minHeight: 44,
+                    }}>{p.l}</button>
+                  ))}
+                </div>
+              </Field>
+              <Field label="Notes"><textarea value={form.notes} onChange={e => setF('notes', e.target.value)} rows={2} style={{ ...iStyle, minHeight: 0, resize: 'none' }} /></Field>
+            </Section>
           )}
-          <Field label="Paiement">
-            <div style={{ display: 'flex', gap: 8 }}>
-              {[{ v: 'checkout', l: 'À la sortie' }, { v: 'immediate', l: 'Immédiat' }, { v: 'deposit', l: 'Acompte' }].map(p => (
-                <button key={p.v} onClick={() => setF('payment_type', p.v)} style={{
-                  flex: 1, padding: '10px 6px', borderRadius: 10, fontSize: 12, fontWeight: 600,
-                  background: form.payment_type === p.v ? C.teal : '#f0ece6',
-                  color: form.payment_type === p.v ? C.white : C.dark,
-                  minHeight: 44,
-                }}>{p.l}</button>
-              ))}
-            </div>
-          </Field>
-          <Field label="Notes"><textarea value={form.notes} onChange={e => setF('notes', e.target.value)} rows={2} style={{ ...iStyle, minHeight: 0, resize: 'none' }} /></Field>
-        </Section>
-      )}
+        </div>
+      </div>
 
       <button onClick={submit} disabled={busy} style={{
         width: '100%', padding: 18, background: busy ? C.gray : C.teal,

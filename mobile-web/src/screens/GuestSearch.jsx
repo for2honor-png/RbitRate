@@ -113,7 +113,8 @@ function AgenciesTab() {
   );
 }
 
-export default function GuestSearch() {
+export default function GuestSearch({ ctx }) {
+  const isDesktop = ctx?.isDesktop || false;
   const [tab,      setTab]      = useState('guests');
   const [query,    setQuery]    = useState('');
   const [results,  setResults]  = useState([]);
@@ -173,78 +174,143 @@ export default function GuestSearch() {
             <div style={{ textAlign: 'center', color: C.gray, padding: '20px 0' }}>Aucun résultat</div>
           )}
 
-          <div>
-            {results.map(g => {
-              const isExp = expanded === g.id;
-              const isBlack = g.tag === 'blacklisted';
-              return (
-                <div key={g.id} onClick={() => setExpanded(isExp ? null : g.id)} style={{
-                  background: C.white, borderRadius: 12, marginBottom: 10,
-                  border: `1px solid ${C.border}`,
-                  borderLeft: isBlack ? `4px solid ${C.coral}` : `4px solid ${C.teal}`,
-                  overflow: 'hidden', cursor: 'pointer',
-                  boxShadow: '0 1px 4px rgba(0,0,0,.05)',
-                }}>
-                  <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{
-                      width: 40, height: 40, borderRadius: 20, flexShrink: 0,
-                      background: TAG_COLOR[g.tag] || C.teal,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: C.white, fontWeight: 800, fontSize: 14,
-                    }}>
-                      {g.last_name?.[0]}{g.first_name?.[0]}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, color: C.dark, fontSize: 15 }}>
-                        {g.last_name} {g.first_name}
+          {/* Desktop: table view */}
+          {isDesktop && results.length > 0 ? (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: `2px solid ${C.border}` }}>
+                  {['Nom', 'Nationalité', 'Document', 'Tag', 'Séjours'].map(h => (
+                    <th key={h} style={{ padding: '10px 12px', textAlign: 'left', color: C.gray, fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {results.map(g => (
+                  <tr key={g.id} onClick={() => setExpanded(expanded === g.id ? null : g.id)}
+                    style={{ borderBottom: `1px solid ${C.border}`, cursor: 'pointer', background: expanded === g.id ? `${C.teal}08` : 'transparent' }}>
+                    <td style={{ padding: '12px 12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{
+                          width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                          background: TAG_COLOR[g.tag] || C.teal,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: C.white, fontWeight: 800, fontSize: 12,
+                        }}>
+                          {g.last_name?.[0]}{g.first_name?.[0]}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, color: C.dark }}>{g.last_name} {g.first_name}</div>
+                          {g.date_of_birth && <div style={{ fontSize: 11, color: C.gray }}>{g.date_of_birth}</div>}
+                        </div>
                       </div>
-                      <div style={{ color: C.gray, fontSize: 12, marginTop: 2 }}>
-                        {g.nationality || '—'} · {g.document_number || 'Sans document'}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                      {expanded === g.id && (
+                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+                          {[
+                            ['Profession', g.profession], ['Adresse', g.permanent_address],
+                            ['Téléphone', g.phone], ['Email', g.email],
+                            ['Délivré à', g.document_issued_at], ['Date délivrance', g.document_issued_date],
+                          ].filter(([, v]) => v).map(([l, v]) => (
+                            <div key={l} style={{ display: 'flex', gap: 8, fontSize: 12, color: C.gray, marginBottom: 4 }}>
+                              <span style={{ fontWeight: 600, minWidth: 100 }}>{l}:</span><span style={{ color: C.dark }}>{v}</span>
+                            </div>
+                          ))}
+                          {g.notes && <div style={{ marginTop: 6, fontSize: 12, color: C.dark }}>📝 {g.notes}</div>}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 12px', color: C.dark }}>{g.nationality || '—'}</td>
+                    <td style={{ padding: '12px 12px', color: C.dark }}>
+                      <div style={{ fontSize: 11, color: C.gray }}>{g.document_type}</div>
+                      <div>{g.document_number || '—'}</div>
+                    </td>
+                    <td style={{ padding: '12px 12px' }}>
                       <span style={{
-                        fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+                        fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
                         background: `${TAG_COLOR[g.tag] || C.teal}20`,
                         color: TAG_COLOR[g.tag] || C.teal,
                       }}>{TAG_LABEL[g.tag] || g.tag}</span>
-                      <span style={{ fontSize: 10, color: C.gray }}>{isExp ? '▲' : '▼'}</span>
-                    </div>
-                  </div>
-
-                  {isExp && (
-                    <div style={{ padding: '0 16px 16px', borderTop: `1px solid ${C.border}` }}>
-                      <div style={{ paddingTop: 12 }}>
-                        {[
-                          ['Date de naissance',  g.date_of_birth],
-                          ['Lieu de naissance',  g.place_of_birth],
-                          ['Profession',         g.profession],
-                          ['Adresse',            g.permanent_address],
-                          ['Téléphone',          g.phone],
-                          ['Email',              g.email],
-                          ['Type document',      g.document_type],
-                          ['Numéro document',    g.document_number],
-                          ['Délivré à',          g.document_issued_at],
-                          ['Date délivrance',    g.document_issued_date],
-                          ['Séjours',            g.total_stays ? `${g.total_stays} séjour(s)` : '0'],
-                        ].filter(([, v]) => v).map(([l, v]) => (
-                          <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${C.border}` }}>
-                            <span style={{ color: C.gray, fontSize: 12 }}>{l}</span>
-                            <span style={{ color: C.dark, fontSize: 12, fontWeight: 600, textAlign: 'right', maxWidth: '55%' }}>{v}</span>
-                          </div>
-                        ))}
-                        {g.notes && (
-                          <div style={{ marginTop: 8, padding: '8px 10px', background: '#fef9ee', borderRadius: 8, fontSize: 12, color: C.dark }}>
-                            📝 {g.notes}
-                          </div>
-                        )}
+                    </td>
+                    <td style={{ padding: '12px 12px', color: C.dark, fontWeight: 600 }}>
+                      {g.total_stays ? `${g.total_stays} séjour(s)` : '0'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            /* Mobile: card view */
+            <div>
+              {results.map(g => {
+                const isExp = expanded === g.id;
+                const isBlack = g.tag === 'blacklisted';
+                return (
+                  <div key={g.id} onClick={() => setExpanded(isExp ? null : g.id)} style={{
+                    background: C.white, borderRadius: 12, marginBottom: 10,
+                    border: `1px solid ${C.border}`,
+                    borderLeft: isBlack ? `4px solid ${C.coral}` : `4px solid ${C.teal}`,
+                    overflow: 'hidden', cursor: 'pointer',
+                    boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+                  }}>
+                    <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 20, flexShrink: 0,
+                        background: TAG_COLOR[g.tag] || C.teal,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: C.white, fontWeight: 800, fontSize: 14,
+                      }}>
+                        {g.last_name?.[0]}{g.first_name?.[0]}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, color: C.dark, fontSize: 15 }}>
+                          {g.last_name} {g.first_name}
+                        </div>
+                        <div style={{ color: C.gray, fontSize: 12, marginTop: 2 }}>
+                          {g.nationality || '—'} · {g.document_number || 'Sans document'}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+                          background: `${TAG_COLOR[g.tag] || C.teal}20`,
+                          color: TAG_COLOR[g.tag] || C.teal,
+                        }}>{TAG_LABEL[g.tag] || g.tag}</span>
+                        <span style={{ fontSize: 10, color: C.gray }}>{isExp ? '▲' : '▼'}</span>
                       </div>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    {isExp && (
+                      <div style={{ padding: '0 16px 16px', borderTop: `1px solid ${C.border}` }}>
+                        <div style={{ paddingTop: 12 }}>
+                          {[
+                            ['Date de naissance',  g.date_of_birth],
+                            ['Lieu de naissance',  g.place_of_birth],
+                            ['Profession',         g.profession],
+                            ['Adresse',            g.permanent_address],
+                            ['Téléphone',          g.phone],
+                            ['Email',              g.email],
+                            ['Type document',      g.document_type],
+                            ['Numéro document',    g.document_number],
+                            ['Délivré à',          g.document_issued_at],
+                            ['Date délivrance',    g.document_issued_date],
+                            ['Séjours',            g.total_stays ? `${g.total_stays} séjour(s)` : '0'],
+                          ].filter(([, v]) => v).map(([l, v]) => (
+                            <div key={l} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${C.border}` }}>
+                              <span style={{ color: C.gray, fontSize: 12 }}>{l}</span>
+                              <span style={{ color: C.dark, fontSize: 12, fontWeight: 600, textAlign: 'right', maxWidth: '55%' }}>{v}</span>
+                            </div>
+                          ))}
+                          {g.notes && (
+                            <div style={{ marginTop: 8, padding: '8px 10px', background: '#fef9ee', borderRadius: 8, fontSize: 12, color: C.dark }}>
+                              📝 {g.notes}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </>
       )}
     </div>
