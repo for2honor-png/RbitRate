@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "RbitRate",
+    "slug": "rbitrate-mobile",
+    "version": "1.0.0",
+    "runtimeVersion": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1f2a2e"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1f2a2e"
+      },
+      "package": "com.rbitrate.pms",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.CAMERA"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.rbitrate.pms",
+      "supportsTablet": true
+    },
+    "plugins": [
+      "expo-sqlite"
+    ],
+    "newArchEnabled": true,
+    "extra": {
+      "eas": {
+        "projectId": "91fb073c-be33-4254-86d2-e8091be89bd5"
+      }
+    },
+    "owner": "bossmonim"
+  }
+}

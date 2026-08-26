@@ -1,0 +1,91 @@
+{
+  "name": "rbitrate-desktop",
+  "version": "1.0.0",
+  "description": "RbitRate PMS - Desktop App",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "node scripts/kill-vite.cjs && concurrently \"vite\" \"wait-on http://localhost:5173 && node scripts/start-electron.cjs\"",
+    "build": "vite build && electron-builder",
+    "build:win": "vite build && electron-builder --win",
+    "start": "electron .",
+    "rebuild": "cross-env GYP_MSVS_VERSION=2022 GYP_MSVS_OVERRIDE_PATH=\"C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\" npx electron-rebuild -f -w better-sqlite3",
+    "generate-icons": "node scripts/generate-icons.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
+    "axios": "^1.18.0",
+    "better-sqlite3": "^11",
+    "dotenv": "^17.4.2",
+    "ical-generator": "^11.0.0",
+    "node-ical": "^0.26.1",
+    "qrcode": "^1.5.4",
+    "react": "^18",
+    "react-dom": "^18",
+    "uuid": "^9",
+    "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3",
+    "@vitejs/plugin-react": "^4",
+    "concurrently": "^8",
+    "cross-env": "^10.1.0",
+    "electron": "^30",
+    "electron-builder": "^24",
+    "fkill-cli": "^9.0.0",
+    "sharp": "^0.33.5",
+    "to-ico": "^1.1.5",
+    "vite": "^5",
+    "wait-on": "^7"
+  },
+  "build": {
+    "appId": "com.rbitrate.pms",
+    "productName": "RbitRate",
+    "copyright": "Copyright © 2025 RbitRate",
+    "files": [
+      "electron/**/*",
+      "dist/**/*",
+      "node_modules/**/*",
+      "!node_modules/.cache"
+    ],
+    "extraFiles": [
+      {
+        "from": ".env",
+        "to": ".env",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "requestedExecutionLevel": "requireAdministrator"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "RbitRate PMS",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico",
+      "license": null
+    },
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*"
+    ]
+  }
+}

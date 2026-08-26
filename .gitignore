@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Env files (contain secrets)
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+dist-electron/
+release/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code local settings (personal overrides)
+.claude/settings.local.json
