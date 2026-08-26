@@ -44,21 +44,39 @@ export default function Dashboard() {
   const [weekSchedule, setWeekSchedule]   = useState([]);
   const [shiftBanner, setShiftBanner]     = useState(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!selectedPropertyId) return;
-    invoke('rooms:getAll', { property_id: selectedPropertyId }).then(setRooms);
-    invoke('reservations:getTodayStats', { property_id: selectedPropertyId }).then(r => { if (r) setTodayStats(r); });
-    invoke('finance:getTodayTotals', { property_id: selectedPropertyId }).then(r => { if (r) setTodayFinance(r); });
-    invoke('shifts:getActive', { property_id: selectedPropertyId }).then(r => { if (r) setActiveShifts(r); });
-    invoke('finance:getRecentTransactions', { property_id: selectedPropertyId, limit: 4 }).then(r => { if (r) setRecentTxns(r); });
+    if (!selectedPropertyId) { setLoading(false); return; }
+    async function load() {
+      try {
+        setLoading(true);
+        const [rooms, stats, finance, shifts, txns] = await Promise.all([
+          invoke('rooms:getAll', { property_id: selectedPropertyId }),
+          invoke('reservations:getTodayStats', { property_id: selectedPropertyId }),
+          invoke('finance:getTodayTotals', { property_id: selectedPropertyId }),
+          invoke('shifts:getActive', { property_id: selectedPropertyId }),
+          invoke('finance:getRecentTransactions', { property_id: selectedPropertyId, limit: 4 }),
+        ]);
+        setRooms(Array.isArray(rooms) ? rooms : []);
+        if (stats) setTodayStats(stats);
+        if (finance) setTodayFinance(finance);
+        setActiveShifts(Array.isArray(shifts) ? shifts : []);
+        setRecentTxns(Array.isArray(txns) ? txns : []);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
   }, [selectedPropertyId]);
 
   useEffect(() => {
     if (!staff?.id) return;
     const mon = toISO(getMonday(new Date()));
     invoke('schedules:getTodayForStaff', { staff_id: staff.id }).then(r => setTodaySchedule(r || null));
-    invoke('schedules:getWeekForStaff',  { staff_id: staff.id, start_date: mon }).then(r => { if (r) setWeekSchedule(r); });
+    invoke('schedules:getWeekForStaff',  { staff_id: staff.id, start_date: mon }).then(r => setWeekSchedule(Array.isArray(r) ? r : []));
   }, [staff?.id]);
 
   useEffect(() => {
@@ -78,10 +96,16 @@ export default function Dashboard() {
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(getMonday(new Date()), i);
     const ds = toISO(d);
-    const sched = weekSchedule.find(s => s.schedule_date === ds);
+    const sched = (weekSchedule || []).find(s => s.schedule_date === ds);
     const isToday = ds === toISO(new Date());
     return { d, ds, sched, isToday };
   });
+
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', fontSize: 14, color: '#888' }}>
+      Chargement...
+    </div>
+  );
 
   return (
     <div style={{ fontFamily: theme.font }}>
@@ -237,16 +261,18 @@ export default function Dashboard() {
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {activeShifts.map(s => {
-              const sc = staffColor(s.role);
+              const role = s.staff?.role || s.role;
+              const name = s.staff?.full_name || s.full_name || '?';
+              const sc = staffColor(role);
               return (
                 <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: sc.bg, borderRadius: 8, padding: '7px 12px' }}>
                   <div style={{
                     width: 26, height: 26, borderRadius: '50%', background: sc.color,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: theme.white, fontSize: 10, fontWeight: 800,
-                  }}>{staffInitials(s.full_name)}</div>
+                  }}>{staffInitials(name)}</div>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: sc.color }}>{s.full_name}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: sc.color }}>{name}</div>
                     <div style={{ fontSize: 10, color: theme.dark, opacity: 0.5 }}>{sc.label}</div>
                   </div>
                 </div>
@@ -263,7 +289,9 @@ export default function Dashboard() {
             Transactions récentes
           </div>
           {recentTxns.map(t => {
-            const sc = staffColor(t.role);
+            const role = t.staff?.role || t.role;
+            const name = t.staff?.full_name || t.full_name || '?';
+            const sc = staffColor(role);
             const isIncome = t.type === 'income';
             return (
               <div key={t.id} style={{
@@ -275,10 +303,10 @@ export default function Dashboard() {
                   width: 26, height: 26, borderRadius: '50%', background: sc.bg, color: sc.color,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 9, fontWeight: 800, flexShrink: 0,
-                }}>{staffInitials(t.full_name)}</div>
+                }}>{staffInitials(name)}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: theme.dark, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {t.description || t.category}
+                    {t.description || t.category} {name !== '?' && <span style={{ opacity: 0.45 }}>— {name.split(' ')[0]}</span>}
                   </div>
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: isIncome ? theme.teal : theme.coral, flexShrink: 0 }}>

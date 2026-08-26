@@ -170,7 +170,21 @@ export const db = {
   'groups:create': (d) => post('groups', { ...d, id: crypto.randomUUID(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
 
   // Channels / OTA
-  'channels:getCalendar': (d) => sb(`ota_blocks?property_id=eq.${d.property_id}&deleted_at=is.null&order=start_date.asc`),
+  'channels:getCalendar': async (d) => {
+    const [otaBlocks, reservations] = await Promise.all([
+      sb(`ota_blocks?property_id=eq.${d.property_id}&deleted_at=is.null&order=start_date.asc`),
+      sb(`reservations?property_id=eq.${d.property_id}&deleted_at=is.null&status=in.(checked_in,confirmed)&select=*,guests(last_name,first_name),rooms(room_number)`),
+    ]);
+    return {
+      otaBlocks: Array.isArray(otaBlocks) ? otaBlocks : [],
+      reservations: Array.isArray(reservations) ? reservations.map(r => ({
+        ...r,
+        last_name: r.guests?.last_name,
+        first_name: r.guests?.first_name,
+        room_number: r.rooms?.room_number,
+      })) : [],
+    };
+  },
   'channels:syncAll': () => null,
   'channels:syncOne': () => null,
   'channels:removeOTA': () => null,
@@ -192,18 +206,18 @@ export const db = {
   'orders:updateStatus': (d) => patch(`orders?id=eq.${d.id}`, { status: d.status, updated_at: new Date().toISOString() }),
 
   // Schedules / Planning
-  'schedules:getRange': (d) => sb(`schedules?date=gte.${d.start_date}&date=lte.${d.end_date}&deleted_at=is.null&select=*,staff(full_name,role)`),
+  'schedules:getRange': (d) => sb(`shift_schedules?schedule_date=gte.${d.start_date}&schedule_date=lte.${d.end_date}&deleted_at=is.null&select=*,staff(full_name,role)`).then(r => Array.isArray(r) ? r : []),
   'schedules:getTodayForStaff': (d) => {
     const today = new Date().toISOString().split('T')[0];
-    return sb(`schedules?staff_id=eq.${d.staff_id}&schedule_date=eq.${today}&deleted_at=is.null`).then(r => r?.[0]);
+    return sb(`shift_schedules?staff_id=eq.${d.staff_id}&schedule_date=eq.${today}&deleted_at=is.null`).then(r => Array.isArray(r) ? (r[0] || null) : null);
   },
   'schedules:getWeekForStaff': (d) => {
     const end = new Date(d.start_date);
     end.setDate(end.getDate() + 6);
     const endStr = end.toISOString().split('T')[0];
-    return sb(`schedules?staff_id=eq.${d.staff_id}&schedule_date=gte.${d.start_date}&schedule_date=lte.${endStr}&deleted_at=is.null`);
+    return sb(`shift_schedules?staff_id=eq.${d.staff_id}&schedule_date=gte.${d.start_date}&schedule_date=lte.${endStr}&deleted_at=is.null`).then(r => Array.isArray(r) ? r : []);
   },
-  'schedules:setDay': (d) => post('schedules', { ...d, id: crypto.randomUUID(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
+  'schedules:setDay': (d) => post('shift_schedules', { ...d, id: crypto.randomUUID(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
   'schedules:autoGenerate': () => null,
 
   // Templates

@@ -55,6 +55,8 @@ function TxnRow({ txn }) {
   const time = txn.created_at
     ? (txn.created_at.split('T')[1]?.slice(0, 5) || txn.created_at.slice(11, 16))
     : '';
+  const staffName = txn.staff?.full_name || txn.full_name || '?';
+  const staffRole = txn.staff?.role || txn.role;
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10,
@@ -62,13 +64,13 @@ function TxnRow({ txn }) {
       borderRadius: 8, borderLeft: `4px solid ${isIncome ? theme.teal : theme.coral}`,
       marginBottom: 6,
     }}>
-      <Avatar name={txn.full_name} role={txn.role} size={28} />
+      <Avatar name={staffName} role={staffRole} size={28} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: theme.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {txn.description || CAT_LABELS[txn.category] || txn.category}
         </div>
         <div style={{ fontSize: 11, color: theme.dark, opacity: 0.45, marginTop: 1 }}>
-          {txn.full_name?.split(' ')[0]} · {time} · {CAT_LABELS[txn.category] || txn.category} · {PAY_LABELS[txn.payment_method] || txn.payment_method}
+          {staffName.split(' ')[0]} · {time} · {CAT_LABELS[txn.category] || txn.category} · {PAY_LABELS[txn.payment_method] || txn.payment_method}
         </div>
       </div>
       <div style={{ fontSize: 14, fontWeight: 700, flexShrink: 0, color: isIncome ? theme.teal : theme.coral }}>
@@ -388,7 +390,7 @@ export default function Shifts() {
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: '#4ade80', marginBottom: 6 }}>
                 🟢 SHIFT EN COURS
               </div>
-              <div style={{ fontSize: 16, fontWeight: 800 }}>{activeShift.full_name}</div>
+              <div style={{ fontSize: 16, fontWeight: 800 }}>{activeShift.staff?.full_name || activeShift.full_name || '?'}</div>
               <div style={{ fontSize: 12, opacity: 0.5, marginTop: 3 }}>
                 Ouvert à {timeStr} · {durationStr}
               </div>

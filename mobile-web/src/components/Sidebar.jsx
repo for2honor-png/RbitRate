@@ -39,8 +39,6 @@ export default function Sidebar() {
       {/* Header / property */}
       <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src="/rbitrate-logo.svg" alt="RbitRate" style={{ width: 28, height: 28, flexShrink: 0 }}
-            onError={e => { e.target.style.display = 'none'; }} />
           <div style={{ fontSize: 20, fontWeight: 900, color: theme.white, letterSpacing: -0.5 }}>
             <span style={{ color: theme.teal }}>R</span>bitRate
           </div>
