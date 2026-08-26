@@ -849,7 +849,7 @@ function RoomCard({ room, reservation, guestCount, onEdit, onDelete, onCardClick
 
 export default function Rooms() {
   const { can } = useAuth();
-  const { selectedPropertyId, navigateToCheckIn } = useApp();
+  const { selectedPropertyId, navigateToCheckIn, isDesktop } = useApp();
   const [properties, setProperties] = useState([]);
   const [currentPropertyId, setCurrentPropertyId] = useState(selectedPropertyId);
   const [rooms, setRooms] = useState([]);
@@ -863,6 +863,7 @@ export default function Rooms() {
   const [toast, setToast] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
   const [guestCountsMap, setGuestCountsMap] = useState({});
+  const [mobileSheet, setMobileSheet] = useState(null);
 
   useEffect(() => {
     invoke('properties:getAll', {}).then(list => {
@@ -951,6 +952,139 @@ export default function Rooms() {
     background: active ? theme.teal : 'rgba(31,42,46,0.07)',
     color: active ? theme.white : theme.dark,
   });
+
+  if (!isDesktop) {
+    const sc = mobileSheet ? STATUS_CONFIG[mobileSheet.status] || STATUS_CONFIG.available : null;
+    const res = mobileSheet ? reservationMap[mobileSheet.id] : null;
+    const guestCount = res ? (guestCountsMap[res.id] || 0) : 0;
+
+    return (
+      <div style={{ fontFamily: theme.font, padding: 12 }}>
+        {toast && (
+          <div style={{
+            position: 'fixed', bottom: 72, left: '50%', transform: 'translateX(-50%)',
+            background: '#16a34a', color: theme.white, borderRadius: 10,
+            padding: '12px 24px', fontSize: 13, fontWeight: 700, zIndex: 9999,
+          }}>{toast}</div>
+        )}
+
+        <div style={{ fontSize: 16, fontWeight: 900, color: theme.dark, marginBottom: 12 }}>
+          Chambres <span style={{ fontSize: 12, fontWeight: 500, opacity: 0.5 }}>{rooms.length} total</span>
+        </div>
+
+        {/* 3-column grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          {rooms.map(room => {
+            const cfg = STATUS_CONFIG[room.status] || STATUS_CONFIG.available;
+            const r = reservationMap[room.id];
+            const gName = r?.guest_name || '';
+            return (
+              <div
+                key={room.id}
+                onClick={() => setMobileSheet(room)}
+                style={{
+                  background: cfg.bg, borderRadius: 10, padding: '10px 8px',
+                  border: `2px solid ${cfg.color}40`, cursor: 'pointer',
+                  textAlign: 'center', minHeight: 70,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+                }}
+              >
+                <div style={{ fontSize: 15, fontWeight: 900, color: cfg.color }}>{room.room_number}</div>
+                {gName && (
+                  <div style={{ fontSize: 9, color: cfg.color, opacity: 0.8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                    {gName.split(' ')[0]}
+                  </div>
+                )}
+                <div style={{ fontSize: 8, fontWeight: 700, color: cfg.color, opacity: 0.6, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                  {cfg.label}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Bottom sheet overlay */}
+        {mobileSheet && (
+          <>
+            <div
+              onClick={() => setMobileSheet(null)}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }}
+            />
+            <div style={{
+              position: 'fixed', bottom: 60, left: 0, right: 0, zIndex: 201,
+              background: theme.white, borderRadius: '16px 16px 0 0',
+              padding: '20px 20px 32px', boxShadow: '0 -4px 24px rgba(0,0,0,0.15)',
+            }}>
+              <div style={{ width: 40, height: 4, background: 'rgba(31,42,46,0.15)', borderRadius: 2, margin: '0 auto 20px' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 10, background: sc?.bg,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 20, fontWeight: 900, color: sc?.color,
+                }}>
+                  {mobileSheet.room_number}
+                </div>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: theme.dark }}>
+                    Chambre {mobileSheet.room_number}
+                    {mobileSheet.room_name ? ` — ${mobileSheet.room_name}` : ''}
+                  </div>
+                  <div style={{ fontSize: 12, color: sc?.color, fontWeight: 600, marginTop: 2 }}>{sc?.label}</div>
+                </div>
+              </div>
+
+              {res && (
+                <div style={{ background: theme.cream, borderRadius: 10, padding: '10px 14px', marginBottom: 14, fontSize: 13 }}>
+                  <div style={{ fontWeight: 700, color: theme.dark }}>{res.guest_name}</div>
+                  {res.check_in_date && (
+                    <div style={{ color: theme.dark, opacity: 0.6, marginTop: 3, fontSize: 12 }}>
+                      {res.check_in_date} → {res.check_out_date}
+                    </div>
+                  )}
+                  {guestCount > 0 && <div style={{ fontSize: 11, opacity: 0.5, marginTop: 2 }}>👥 {guestCount} personne{guestCount > 1 ? 's' : ''}</div>}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {mobileSheet.status === 'available' && (
+                  <button onClick={() => { setMobileSheet(null); navigateToCheckIn(mobileSheet.id); }} style={{
+                    background: theme.teal, color: theme.white, borderRadius: 10,
+                    padding: '14px 0', border: 'none', fontWeight: 700, fontSize: 14,
+                    fontFamily: theme.font, cursor: 'pointer',
+                  }}>+ Check-in dans cette chambre</button>
+                )}
+                {mobileSheet.status === 'occupied' && res && (
+                  <button onClick={async () => {
+                    await handleCheckout(res.id, mobileSheet.id);
+                    setMobileSheet(null);
+                  }} style={{
+                    background: theme.coral, color: theme.white, borderRadius: 10,
+                    padding: '14px 0', border: 'none', fontWeight: 700, fontSize: 14,
+                    fontFamily: theme.font, cursor: 'pointer',
+                  }}>Check-out</button>
+                )}
+                {(mobileSheet.status === 'cleaning' || mobileSheet.status === 'maintenance') && (
+                  <button onClick={async () => {
+                    await handleStatusChange(mobileSheet.id, 'available');
+                    setMobileSheet(null);
+                  }} style={{
+                    background: theme.teal, color: theme.white, borderRadius: 10,
+                    padding: '14px 0', border: 'none', fontWeight: 700, fontSize: 14,
+                    fontFamily: theme.font, cursor: 'pointer',
+                  }}>Marquer libre</button>
+                )}
+                <button onClick={() => setMobileSheet(null)} style={{
+                  background: 'rgba(31,42,46,0.07)', color: theme.dark, borderRadius: 10,
+                  padding: '12px 0', border: 'none', fontWeight: 600, fontSize: 14,
+                  fontFamily: theme.font, cursor: 'pointer',
+                }}>Fermer</button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={{ fontFamily: theme.font }}>

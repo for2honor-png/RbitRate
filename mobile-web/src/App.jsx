@@ -1,5 +1,6 @@
-import React, { useState, createContext, useContext, useCallback } from 'react';
+import React, { useState, createContext, useContext, useCallback, useEffect } from 'react';
 import { theme } from './theme.js';
+import { invoke } from './db.js';
 import Login      from './screens/Login.jsx';
 import Dashboard  from './screens/Dashboard.jsx';
 import Properties from './screens/Properties.jsx';
@@ -66,6 +67,18 @@ export const NAV_ITEMS = [
   { key: 'properties', label: 'Propriétés',        icon: '🏨', perm: 'can_manage_properties' },
 ];
 
+const MOBILE_NAV = [
+  { id: 'dashboard', icon: '🏠', label: 'Accueil' },
+  { id: 'rooms',     icon: '🛏️', label: 'Chambres' },
+  { id: 'checkin',   icon: '✅', label: 'Check-in' },
+  { id: 'guests',    icon: '👥', label: 'Clients' },
+  { id: 'shifts',    icon: '⏱️', label: 'Shifts' },
+];
+
+function initials(name) {
+  return (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+}
+
 export default function App() {
   const [staff, setStaff]             = useState(null);
   const [permissions, setPermissions] = useState({});
@@ -73,6 +86,26 @@ export default function App() {
   const [selectedPropertyId, setSelectedPropertyId] = useState(null);
   const [propertyVersion, setPropertyVersion]       = useState(0);
   const [checkInRoomId, setCheckInRoomId]           = useState(null);
+  const [isDesktop, setIsDesktop]     = useState(() => window.innerWidth >= 768);
+  const [properties, setProperties]   = useState([]);
+
+  useEffect(() => {
+    const fn = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+
+  useEffect(() => {
+    if (!staff) return;
+    invoke('properties:getAll', {}).then(r => {
+      if (Array.isArray(r)) {
+        setProperties(r);
+        if (!selectedPropertyId && r.length > 0) setSelectedPropertyId(r[0].id);
+      }
+    });
+  }, [staff, propertyVersion]);
+
+  const currentProperty = properties.find(p => p.id === selectedPropertyId) || null;
 
   function refreshProperties() { setPropertyVersion(v => v + 1); }
 
@@ -122,28 +155,98 @@ export default function App() {
     planning:   <Planning />,
   };
 
+  const ctxValue = {
+    page, setPage,
+    selectedPropertyId, setSelectedPropertyId,
+    propertyVersion, refreshProperties,
+    checkInRoomId, setCheckInRoomId,
+    navigateToCheckIn,
+    isDesktop,
+    currentProperty,
+  };
+
   return (
     <AuthContext.Provider value={{ staff, login, logout, can }}>
-      <AppContext.Provider value={{
-        page, setPage,
-        selectedPropertyId, setSelectedPropertyId,
-        propertyVersion, refreshProperties,
-        checkInRoomId, setCheckInRoomId,
-        navigateToCheckIn,
-      }}>
-        <div style={{ display: 'flex', height: '100vh', fontFamily: theme.font, background: theme.cream, overflow: 'hidden' }}>
-          <Sidebar />
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <TopBar navItems={NAV_ITEMS} />
-            <main style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+      <AppContext.Provider value={ctxValue}>
+        {isDesktop ? (
+          /* ── Desktop layout (unchanged) ── */
+          <div style={{ display: 'flex', height: '100vh', fontFamily: theme.font, background: theme.cream, overflow: 'hidden' }}>
+            <Sidebar />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <TopBar navItems={NAV_ITEMS} />
+              <main style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+                {screenMap[page] || (
+                  <div style={{ color: theme.dark, opacity: 0.4, marginTop: 60, textAlign: 'center', fontSize: 18 }}>
+                    Cette section sera disponible dans une prochaine phase.
+                  </div>
+                )}
+              </main>
+            </div>
+          </div>
+        ) : (
+          /* ── Mobile layout ── */
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', fontFamily: theme.font, background: theme.cream, overflow: 'hidden' }}>
+            {/* Mobile top header */}
+            <div style={{
+              height: 52, background: '#1f2a2e', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '0 16px',
+            }}>
+              <div style={{ fontSize: 16, fontWeight: 900, color: '#0f766e' }}>RbitRate</div>
+              <div style={{
+                fontSize: 12, color: 'rgba(255,255,255,0.6)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                maxWidth: 150, textAlign: 'center',
+              }}>
+                {currentProperty?.display_name}
+              </div>
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%', background: '#0f766e',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, fontWeight: 700, color: 'white', flexShrink: 0,
+                cursor: 'pointer',
+              }}
+                onClick={logout}
+                title="Déconnexion"
+              >
+                {initials(staff?.full_name)}
+              </div>
+            </div>
+
+            {/* Mobile content */}
+            <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: 60 }}>
               {screenMap[page] || (
-                <div style={{ color: theme.dark, opacity: 0.4, marginTop: 60, textAlign: 'center', fontSize: 18 }}>
-                  Cette section sera disponible dans une prochaine phase.
+                <div style={{ textAlign: 'center', padding: 40, opacity: 0.4 }}>
+                  Cette section n'est pas disponible en mode mobile.
                 </div>
               )}
             </main>
+
+            {/* Mobile bottom nav */}
+            <div style={{
+              position: 'fixed', bottom: 0, left: 0, right: 0,
+              height: 60, background: '#1f2a2e',
+              display: 'flex', borderTop: '1px solid rgba(255,255,255,0.08)',
+              zIndex: 100,
+            }}>
+              {MOBILE_NAV.map(item => {
+                const active = page === item.id;
+                return (
+                  <button key={item.id} onClick={() => setPage(item.id)} style={{
+                    flex: 1, display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center', gap: 2,
+                    background: 'transparent', border: 'none', minHeight: 44,
+                    color: active ? '#0f766e' : 'rgba(255,255,255,0.4)',
+                    fontSize: 10, cursor: 'pointer', padding: '6px 0',
+                  }}>
+                    <span style={{ fontSize: 20 }}>{item.icon}</span>
+                    <span style={{ fontWeight: active ? 700 : 400 }}>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </AppContext.Provider>
     </AuthContext.Provider>
   );

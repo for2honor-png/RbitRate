@@ -33,7 +33,7 @@ function StatCard({ label, value, color, sub }) {
 }
 
 export default function Dashboard() {
-  const { selectedPropertyId, setPage, navigateToCheckIn } = useApp();
+  const { selectedPropertyId, setPage, navigateToCheckIn, isDesktop } = useApp();
   const { staff } = useAuth();
   const [rooms, setRooms] = useState([]);
   const [todayStats, setTodayStats] = useState({ arrivals: 0, departures: 0 });
@@ -104,6 +104,81 @@ export default function Dashboard() {
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', fontSize: 14, color: '#888' }}>
       Chargement...
+    </div>
+  );
+
+  if (!isDesktop) return (
+    <div style={{ fontFamily: theme.font, padding: 16 }}>
+      {/* Mobile 2×2 stat grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+        {[
+          { label: 'Occupées',  value: occupied,              color: theme.coral  },
+          { label: 'Libres',    value: available,             color: theme.teal   },
+          { label: 'Arrivées',  value: todayStats.arrivals,   color: theme.teal   },
+          { label: 'Revenus',   value: `${todayFinance.income.toLocaleString('fr-MA')} MAD`, color: '#16a34a' },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{
+            background: theme.white, borderRadius: 12, padding: '14px 16px',
+            border: '1px solid rgba(31,42,46,0.08)',
+          }}>
+            <div style={{ fontSize: 26, fontWeight: 900, color }}>{value}</div>
+            <div style={{ fontSize: 12, color: theme.dark, opacity: 0.55, marginTop: 3, fontWeight: 600 }}>{label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Mobile quick actions */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+        <button onClick={() => navigateToCheckIn(null)} style={{
+          background: theme.teal, color: theme.white, borderRadius: 10,
+          padding: '14px 12px', border: 'none', fontWeight: 700, fontSize: 13,
+          fontFamily: theme.font, cursor: 'pointer', minHeight: 54,
+        }}>+ Check-in</button>
+        <button onClick={() => setPage('rooms')} style={{
+          background: 'rgba(31,42,46,0.07)', color: theme.dark, borderRadius: 10,
+          padding: '14px 12px', border: 'none', fontWeight: 700, fontSize: 13,
+          fontFamily: theme.font, cursor: 'pointer', minHeight: 54,
+        }}>🛏 Chambres</button>
+        <button onClick={() => setPage('guests')} style={{
+          background: 'rgba(31,42,46,0.07)', color: theme.dark, borderRadius: 10,
+          padding: '14px 12px', border: 'none', fontWeight: 700, fontSize: 13,
+          fontFamily: theme.font, cursor: 'pointer', minHeight: 54,
+        }}>👥 Clients</button>
+        <button onClick={() => setPage('shifts')} style={{
+          background: 'rgba(31,42,46,0.07)', color: theme.dark, borderRadius: 10,
+          padding: '14px 12px', border: 'none', fontWeight: 700, fontSize: 13,
+          fontFamily: theme.font, cursor: 'pointer', minHeight: 54,
+        }}>⏱ Shifts</button>
+      </div>
+
+      {/* Active shifts mini-list */}
+      {activeShifts.length > 0 && (
+        <div style={{ background: theme.white, borderRadius: 12, padding: 14, marginBottom: 16, border: '1px solid rgba(31,42,46,0.08)' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.5, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>Shifts actifs</div>
+          {activeShifts.map(s => (
+            <div key={s.id} style={{ fontSize: 13, color: theme.dark, marginBottom: 4 }}>
+              👤 {s.staff?.full_name || s.full_name || '?'}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Recent transactions mini-list */}
+      {recentTxns.length > 0 && (
+        <div style={{ background: theme.white, borderRadius: 12, padding: 14, border: '1px solid rgba(31,42,46,0.08)' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.5, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>Transactions récentes</div>
+          {recentTxns.map(t => (
+            <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(31,42,46,0.05)' }}>
+              <div style={{ fontSize: 12, color: theme.dark, opacity: 0.75, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>
+                {t.description || t.category}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: t.type === 'income' ? theme.teal : theme.coral, flexShrink: 0 }}>
+                {t.type === 'income' ? '+' : '-'}{(t.amount || 0).toLocaleString('fr-MA')} MAD
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 

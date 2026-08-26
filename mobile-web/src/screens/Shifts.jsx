@@ -274,7 +274,7 @@ function AddTxnModal({ shift, defaultType, onConfirm, onClose }) {
 }
 
 export default function Shifts() {
-  const { selectedPropertyId } = useApp();
+  const { selectedPropertyId, isDesktop } = useApp();
   const { staff } = useAuth();
   const [activeShift, setActiveShift] = useState(null);
   const [txns, setTxns] = useState([]);
@@ -396,7 +396,7 @@ export default function Shifts() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr 1fr 1fr' : '1fr 1fr', gap: 10, marginBottom: 18 }}>
               {[
                 { label: 'Caisse ouverture', val: `${(activeShift.opening_cash || 0).toLocaleString('fr-MA')} MAD`, color: 'rgba(255,255,255,0.75)' },
                 { label: 'Recettes cash', val: `+${income.toLocaleString('fr-MA')} MAD`, color: '#4ade80' },
@@ -410,21 +410,21 @@ export default function Shifts() {
               ))}
             </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: isDesktop ? 'row' : 'column', gap: 8 }}>
               <button onClick={() => setAddTxnType('income')} style={{
                 flex: 1, background: '#16a34a25', color: '#4ade80', borderRadius: 8,
-                padding: '9px 0', border: '1px solid #4ade8030', fontWeight: 700, fontSize: 13,
-                fontFamily: theme.font, cursor: 'pointer',
+                padding: isDesktop ? '9px 0' : '14px 0', border: '1px solid #4ade8030', fontWeight: 700,
+                fontSize: isDesktop ? 13 : 15, fontFamily: theme.font, cursor: 'pointer',
               }}>+ Recette</button>
               <button onClick={() => setAddTxnType('expense')} style={{
                 flex: 1, background: '#ef444425', color: '#f87171', borderRadius: 8,
-                padding: '9px 0', border: '1px solid #f8717130', fontWeight: 700, fontSize: 13,
-                fontFamily: theme.font, cursor: 'pointer',
+                padding: isDesktop ? '9px 0' : '14px 0', border: '1px solid #f8717130', fontWeight: 700,
+                fontSize: isDesktop ? 13 : 15, fontFamily: theme.font, cursor: 'pointer',
               }}>− Dépense</button>
               <button onClick={() => setClosingShift(activeShift)} style={{
                 background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.65)', borderRadius: 8,
-                padding: '9px 16px', border: '1px solid rgba(255,255,255,0.15)', fontWeight: 600, fontSize: 12,
-                fontFamily: theme.font, cursor: 'pointer',
+                padding: isDesktop ? '9px 16px' : '12px 0', border: '1px solid rgba(255,255,255,0.15)',
+                fontWeight: 600, fontSize: 12, fontFamily: theme.font, cursor: 'pointer',
               }}>Fermer le Shift</button>
             </div>
           </div>

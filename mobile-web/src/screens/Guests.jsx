@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { theme } from '../theme.js';
 import Modal from '../components/Modal.jsx';
-import { useAuth } from '../App.jsx';
+import { useAuth, useApp } from '../App.jsx';
 import { invoke } from '../db.js';
 
 const FIELD = {
@@ -589,6 +589,7 @@ function AgenciesView({ showToast }) {
 
 export default function Guests() {
   const { can } = useAuth();
+  const { isDesktop } = useApp();
   const [guests, setGuests] = useState([]);
   const [tagFilter, setTagFilter] = useState('all');
   const [query, setQuery] = useState('');
@@ -638,6 +639,84 @@ export default function Guests() {
     await invoke('guests:setTag', { id, tag });
     load();
   }
+
+  if (!isDesktop) return (
+    <div style={{ fontFamily: theme.font, padding: 12 }}>
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 72, left: '50%', transform: 'translateX(-50%)',
+          background: toast.ok ? '#16a34a' : theme.coral, color: theme.white,
+          borderRadius: 10, padding: '12px 24px', fontSize: 13, fontWeight: 700, zIndex: 9999,
+        }}>{toast.msg}</div>
+      )}
+
+      {/* Mobile search bar */}
+      <div style={{ position: 'relative', marginBottom: 12 }}>
+        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 15, opacity: 0.4, pointerEvents: 'none' }}>🔍</span>
+        <input value={query} onChange={e => setQuery(e.target.value)}
+          placeholder="Rechercher..."
+          style={{ ...FIELD, paddingLeft: 36 }} />
+      </div>
+
+      {/* Mobile add button */}
+      {can('can_manage_clients') && (
+        <button onClick={() => { setEditing(null); setShowModal(true); }} style={{
+          width: '100%', background: theme.teal, color: theme.white, borderRadius: 10,
+          padding: '12px 0', border: 'none', fontWeight: 700, fontSize: 14,
+          fontFamily: theme.font, cursor: 'pointer', marginBottom: 12,
+        }}>+ Nouveau client</button>
+      )}
+
+      {/* Mobile guests list */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {guests.length === 0 ? (
+          <div style={{ textAlign: 'center', marginTop: 40, opacity: 0.4, fontSize: 14 }}>
+            {query ? 'Aucun résultat' : 'Aucun client'}
+          </div>
+        ) : guests.map(g => {
+          const tc = TAG_CONFIG[g.tag] || TAG_CONFIG.regular;
+          const isBlacklisted = g.tag === 'blacklist';
+          const initials = `${g.last_name[0] || ''}${g.first_name[0] || ''}`.toUpperCase();
+          return (
+            <div
+              key={g.id}
+              onClick={() => { if (can('can_manage_clients')) { setEditing(g); setShowModal(true); } }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                background: theme.white, borderRadius: 10, padding: '12px 14px',
+                marginBottom: 6, cursor: can('can_manage_clients') ? 'pointer' : 'default',
+                border: isBlacklisted ? `2px solid ${theme.coral}` : '1px solid rgba(31,42,46,0.08)',
+              }}
+            >
+              <div style={{
+                width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                background: isBlacklisted ? theme.coral : g.tag === 'vip' ? theme.saffron : theme.teal,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: theme.white, fontSize: 13, fontWeight: 700,
+              }}>{initials}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: theme.dark }}>
+                  {g.last_name} {g.first_name}
+                </div>
+                <div style={{ fontSize: 11, color: theme.dark, opacity: 0.55, marginTop: 2 }}>
+                  {g.nationality || ''}
+                </div>
+              </div>
+              <span style={{
+                fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4,
+                background: tc.bg, color: tc.color, borderRadius: 4, padding: '2px 6px', flexShrink: 0,
+              }}>{tc.label}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {showModal && (
+        <GuestModal initial={editing} onSave={handleSave}
+          onClose={() => { setShowModal(false); setEditing(null); }} />
+      )}
+    </div>
+  );
 
   return (
     <div style={{ fontFamily: theme.font }}>
