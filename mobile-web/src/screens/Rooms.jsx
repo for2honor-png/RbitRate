@@ -494,7 +494,7 @@ function OccupiedDetailModal({ room, reservation, selectedPropertyId, onCheckout
                   </div>
 
                   <div style={{ fontSize: 11, color: theme.dark, opacity: 0.5, marginBottom: 12 }}>
-                    Shift actif: {activeShifts[0].full_name} · Ce paiement sera enregistré sous son shift.
+                    Shift actif: {activeShifts[0].staff?.full_name || activeShifts[0].full_name} · Ce paiement sera enregistré sous son shift.
                   </div>
 
                   <div style={{ display: 'flex', gap: 8 }}>

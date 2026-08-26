@@ -92,10 +92,18 @@ export const db = {
   // Reservation guests
   'reservation_guests:getAll': (d) => sb(`reservation_guests?reservation_id=eq.${d.reservation_id}&select=*,guests(last_name,first_name,nationality,document_number)&order=is_primary.desc,created_at.asc`),
   'reservation_guests:getCounts': async (d) => {
-    const counts = await sb(`reservation_guests?select=reservation_id&reservation_id=in.(${d.reservation_ids.join(',')})`);
+    let ids = d?.reservation_ids;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      if (!d?.property_id) return [];
+      const activeRes = await sb(`reservations?property_id=eq.${d.property_id}&status=eq.checked_in&deleted_at=is.null&select=id`);
+      if (!Array.isArray(activeRes) || activeRes.length === 0) return [];
+      ids = activeRes.map(r => r.id);
+    }
+    const counts = await sb(`reservation_guests?reservation_id=in.(${ids.join(',')})&select=reservation_id`);
+    if (!Array.isArray(counts)) return [];
     const map = {};
-    (counts || []).forEach(r => { map[r.reservation_id] = (map[r.reservation_id] || 0) + 1; });
-    return map;
+    counts.forEach(r => { map[r.reservation_id] = (map[r.reservation_id] || 0) + 1; });
+    return Object.entries(map).map(([reservation_id, count]) => ({ reservation_id, count }));
   },
   'reservation_guests:add': (d) => post('reservation_guests', { ...d, id: crypto.randomUUID(), created_at: new Date().toISOString() }),
   'reservation_guests:remove': (d) => fetch(`${SUPABASE_URL}/rest/v1/reservation_guests?id=eq.${d.id}`, {
@@ -221,10 +229,10 @@ export const db = {
   'schedules:autoGenerate': () => null,
 
   // Templates
-  'templates:getAll': () => sb('schedule_templates?deleted_at=is.null&order=name.asc'),
-  'templates:create': (d) => post('schedule_templates', { ...d, id: crypto.randomUUID(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
-  'templates:update': (d) => patch(`schedule_templates?id=eq.${d.id}`, { ...d, updated_at: new Date().toISOString() }),
-  'templates:delete': (d) => patch(`schedule_templates?id=eq.${d.id}`, { deleted_at: new Date().toISOString() }),
+  'templates:getAll': (d) => sb(`rotation_templates?${d?.property_id ? `property_id=eq.${d.property_id}&` : ''}deleted_at=is.null&order=name.asc`).then(r => Array.isArray(r) ? r : []),
+  'templates:create': (d) => post('rotation_templates', { ...d, id: crypto.randomUUID(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() }),
+  'templates:update': (d) => patch(`rotation_templates?id=eq.${d.id}`, { ...d, updated_at: new Date().toISOString() }),
+  'templates:delete': (d) => patch(`rotation_templates?id=eq.${d.id}`, { deleted_at: new Date().toISOString() }),
 
   // Time off
   'timeoff:getAll': (d) => sb(`time_off_requests?${d?.staff_id ? `staff_id=eq.${d.staff_id}&` : ''}deleted_at=is.null&order=start_date.desc&select=*,staff(full_name,role)`),
@@ -262,9 +270,15 @@ export async function invoke(channel, data) {
     return null;
   }
   try {
-    return await handler(data);
+    const result = await handler(data);
+    // Detect Supabase error responses (they're truthy objects with code+message, not arrays)
+    if (result && !Array.isArray(result) && typeof result.code === 'string' && typeof result.message === 'string') {
+      console.error(`Supabase error [${channel}]:`, result.message);
+      return null;
+    }
+    return result ?? null;
   } catch (err) {
-    console.error(`invoke error [${channel}]:`, err);
+    console.error(`invoke error [${channel}]:`, err.message || err);
     return null;
   }
 }

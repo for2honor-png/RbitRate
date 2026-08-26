@@ -327,7 +327,7 @@ export default function Properties() {
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   const load = useCallback(() => {
-    invoke('properties:getAll', {}).then(setProperties);
+    invoke('properties:getAll', {}).then(r => setProperties(Array.isArray(r) ? r : []));
   }, []);
 
   useEffect(() => { load(); }, [load]);
